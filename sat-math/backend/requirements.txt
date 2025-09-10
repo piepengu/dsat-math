@@ -1,0 +1,7 @@
+﻿fastapi
+uvicorn[standard]
+sympy
+pydantic-settings
+python-multipart
+scipy
+
