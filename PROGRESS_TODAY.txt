@@ -1,0 +1,22 @@
+﻿DSAT Math App - Progress Summary (date: 2025-09-10 01:40)
+
+Whats done
+- SAT_MATH/ docs: goals, stack, endpoints, roadmap
+- Backend (sat-math/backend):
+  - FastAPI app with /health, /generate, /grade, /estimate
+  - Generators/graders: linear_equation, two_step_equation, proportion, linear_system_2x2
+  - Score estimator (Beta prior  200800)
+  - Pytest config + tests (12 passing)
+- Frontend (sat-math/frontend):
+  - Vite React+TS scaffold
+  - Minimal UI: pick domain/skill, generate question, submit answer, show explanation
+  - KaTeX rendering via react-katex
+
+How to run
+- Backend: cd sat-math/backend; .venv\Scripts\Activate.ps1; pip install -r requirements.txt; uvicorn app.main:app --reload
+- Frontend: cd sat-math/frontend; npm run dev
+
+Next steps
+- Add more templates (Advanced Math, Geometry/Trig)
+- Add /estimate to UI and basic analytics
+- Timed module flow and review queue
