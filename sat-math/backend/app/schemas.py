@@ -15,6 +15,7 @@ class GenerateResponse(BaseModel):
     format: str
     seed: int
     prompt_latex: str
+    choices: Optional[List[str]] = None
 
 
 class GradeRequest(BaseModel):
@@ -22,6 +23,8 @@ class GradeRequest(BaseModel):
     skill: str
     seed: int
     user_answer: str
+    user_id: Optional[str] = None
+    selected_choice_index: Optional[int] = None
 
 
 class GradeResponse(BaseModel):
@@ -29,6 +32,17 @@ class GradeResponse(BaseModel):
     correct_answer: str
     explanation_steps: List[str]
     why_correct: Optional[str] = None
+    why_incorrect_selected: Optional[str] = None
+
+
+class AttemptOut(BaseModel):
+    id: int
+    user_id: str
+    domain: str
+    skill: str
+    seed: int
+    correct: bool
+    correct_answer: str
 
 
 class EstimateRequest(BaseModel):
