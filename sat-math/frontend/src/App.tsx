@@ -165,7 +165,7 @@ function App() {
                         <option value="pythagorean_leg">Pythagorean leg</option>
                     </select>
                     <button
-                        className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         disabled={loading || inSession}
                         onClick={() => {
                             setEstimate(null)
@@ -194,7 +194,7 @@ function App() {
                         />
                     </label>
                     <button
-                        className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                        className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                         disabled={loading || inSession}
                         onClick={async () => {
                             setEstimate(null)
@@ -245,14 +245,14 @@ function App() {
                         </div>
                     ) : (
                         <input
-                            className="border rounded px-3 py-2 flex-1 min-w-[220px]"
+                            className="border border-gray-300 rounded px-3 py-2 flex-1 min-w-[220px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             value={answer}
                             onChange={(e) => setAnswer(e.target.value)}
                             placeholder="Enter your answer"
                         />
                     )}
                     <button
-                        className="inline-flex items-center px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         disabled={loading || seed == null}
                         onClick={submit}
                     >
@@ -260,7 +260,7 @@ function App() {
                     </button>
                     {inSession && result && (
                         <button
-                            className="inline-flex items-center px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50"
+                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                             disabled={loading}
                             onClick={async () => {
                                 const nextIdx = questionIdx + 1
@@ -324,7 +324,7 @@ function App() {
 
                 <div className="mt-4">
                     <button
-                        className="inline-flex items-center px-3 py-2 rounded bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50"
+                        className="inline-flex items-center px-3 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                         disabled={loading || !userId}
                         onClick={async () => {
                             setLoading(true)
