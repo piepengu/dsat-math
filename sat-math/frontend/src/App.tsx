@@ -50,10 +50,13 @@ function App() {
     const [estimate, setEstimate] = useState<{ score: number; ci68: [number, number] } | null>(null)
     const [userId, setUserId] = useState<string>('')
     const [stats, setStats] = useState<Record<string, { attempts: number; correct: number; accuracy: number }> | null>(null)
+    const [lastError, setLastError] = useState<string | null>(null)
 
     const apiBase = useMemo(() => {
-        // Change if backend runs elsewhere
-        return 'http://127.0.0.1:8000'
+        // Use env in production; fallback to local for dev
+        return (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE === ''
+            ? (import.meta as any).env.VITE_API_BASE
+            : 'http://127.0.0.1:8000'
     }, [])
 
     // ensure persistent user id
@@ -74,6 +77,7 @@ function App() {
         setAnswer('')
         setSelectedIdx(null)
         setChoices(null)
+        setLastError(null)
         try {
             const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
                 domain,
@@ -82,6 +86,9 @@ function App() {
             setLatex(resp.data.prompt_latex)
             setSeed(resp.data.seed)
             setChoices(resp.data.choices ?? null)
+        } catch (e: any) {
+            const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+            setLastError(msg)
         } finally {
             setLoading(false)
         }
@@ -90,6 +97,7 @@ function App() {
     const submit = async () => {
         if (seed == null) return
         setLoading(true)
+        setLastError(null)
         try {
             const payload: any = {
                 domain,
@@ -108,6 +116,9 @@ function App() {
             if (inSession) {
                 setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
             }
+        } catch (e: any) {
+            const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+            setLastError(msg)
         } finally {
             setLoading(false)
         }
@@ -120,208 +131,239 @@ function App() {
     }, [])
 
     return (
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: 16 }}>
-            <h2>DSAT Math Practice</h2>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                <select value={domain} onChange={(e) => setDomain(e.target.value as Domain)}>
-                    <option value="Algebra">Algebra</option>
-                    <option value="PSD">Problem Solving & Data Analysis</option>
-                    <option value="Advanced">Advanced Math</option>
-                    <option value="Geometry">Geometry & Trig</option>
-                </select>
-                <select value={skill} onChange={(e) => setSkill(e.target.value as Skill)}>
-                    <option value="linear_equation">Linear equation</option>
-                    <option value="linear_equation_mc">Linear equation (MC)</option>
-                    <option value="two_step_equation">Two-step equation</option>
-                    <option value="proportion">Proportion</option>
-                    <option value="linear_system_2x2">2x2 system</option>
-                    <option value="quadratic_roots">Quadratic roots</option>
-                    <option value="exponential_solve">Exponential solve</option>
-                    <option value="pythagorean_hypotenuse">Pythagorean hypotenuse</option>
-                    <option value="pythagorean_leg">Pythagorean leg</option>
-                </select>
-                <button
-                    disabled={loading || inSession}
-                    onClick={() => {
-                        setEstimate(null)
-                        setQuestionIdx(0)
-                        setNumCorrect(0)
-                        setInSession(false)
-                        void loadQuestion()
-                    }}
-                >
-                    New question
-                </button>
-                <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.8 }}>
-                    User: {userId || '...'}
+        <div className="min-h-screen bg-gray-50 text-gray-900">
+            <div className="max-w-3xl mx-auto p-6">
+                <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
+                    <div>API base: {apiBase || '(not set, using 127.0.0.1 fallback)'}</div>
+                    {lastError && <div className="mt-1">Last error: {lastError}</div>}
                 </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-                <label>
-                    Session size:
-                    <input
-                        type="number"
-                        min={1}
-                        max={44}
-                        value={sessionLen}
-                        onChange={(e) => setSessionLen(parseInt(e.target.value || '1', 10))}
-                        style={{ width: 64, marginLeft: 6 }}
-                        disabled={inSession}
-                    />
-                </label>
-                <button
-                    disabled={loading || inSession}
-                    onClick={async () => {
-                        setEstimate(null)
-                        setQuestionIdx(0)
-                        setNumCorrect(0)
-                        setInSession(true)
-                        await loadQuestion()
-                    }}
-                >
-                    Start session
-                </button>
-                {inSession && (
-                    <div style={{ fontSize: 14 }}>
-                        Q {questionIdx + 1} / {sessionLen} · Correct: {numCorrect}
-                    </div>
-                )}
-            </div>
-
-            {latex && (
-                <div style={{ padding: 12, border: '1px solid #ddd', borderRadius: 8, marginBottom: 12 }}>
-                    <BlockMath math={latex} />
-                </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {choices && choices.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
-                        {choices.map((c, idx) => (
-                            <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input
-                                    type="radio"
-                                    name="mc"
-                                    checked={selectedIdx === idx}
-                                    onChange={() => setSelectedIdx(idx)}
-                                />
-                                <span>{c}</span>
-                            </label>
-                        ))}
-                    </div>
-                ) : (
-                    <input
-                        value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
-                        placeholder="Enter your answer"
-                    />
-                )}
-                <button disabled={loading || seed == null} onClick={submit}>Submit</button>
-                {inSession && result && (
+                <h2 className="text-2xl font-semibold mb-3">DSAT Math Practice</h2>
+                <div className="flex flex-wrap gap-2 items-center mb-3">
+                    <select
+                        className="border rounded px-3 py-2 bg-white"
+                        value={domain}
+                        onChange={(e) => setDomain(e.target.value as Domain)}
+                    >
+                        <option value="Algebra">Algebra</option>
+                        <option value="PSD">Problem Solving & Data Analysis</option>
+                        <option value="Advanced">Advanced Math</option>
+                        <option value="Geometry">Geometry & Trig</option>
+                    </select>
+                    <select
+                        className="border rounded px-3 py-2 bg-white"
+                        value={skill}
+                        onChange={(e) => setSkill(e.target.value as Skill)}
+                    >
+                        <option value="linear_equation">Linear equation</option>
+                        <option value="linear_equation_mc">Linear equation (MC)</option>
+                        <option value="two_step_equation">Two-step equation</option>
+                        <option value="proportion">Proportion</option>
+                        <option value="linear_system_2x2">2x2 system</option>
+                        <option value="quadratic_roots">Quadratic roots</option>
+                        <option value="exponential_solve">Exponential solve</option>
+                        <option value="pythagorean_hypotenuse">Pythagorean hypotenuse</option>
+                        <option value="pythagorean_leg">Pythagorean leg</option>
+                    </select>
                     <button
-                        disabled={loading}
+                        className="inline-flex items-center px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        disabled={loading || inSession}
+                        onClick={() => {
+                            setEstimate(null)
+                            setQuestionIdx(0)
+                            setNumCorrect(0)
+                            setInSession(false)
+                            void loadQuestion()
+                        }}
+                    >
+                        New question
+                    </button>
+                    <div className="ml-auto text-xs text-gray-500">User: {userId || '...'}</div>
+                </div>
+
+                <div className="flex items-center gap-3 mb-3">
+                    <label className="text-sm text-gray-700">
+                        Session size:
+                        <input
+                            type="number"
+                            min={1}
+                            max={44}
+                            value={sessionLen}
+                            onChange={(e) => setSessionLen(parseInt(e.target.value || '1', 10))}
+                            className="ml-2 w-20 border rounded px-2 py-1"
+                            disabled={inSession}
+                        />
+                    </label>
+                    <button
+                        className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                        disabled={loading || inSession}
                         onClick={async () => {
-                            // advance to next or finish
-                            const nextIdx = questionIdx + 1
-                            if (nextIdx >= sessionLen) {
-                                // finish: request estimate
-                                setLoading(true)
-                                try {
-                                    const est = await axios.post<{ score: number; ci68: [number, number] }>(
-                                        `${apiBase}/estimate`,
-                                        { correct: numCorrect, total: sessionLen }
-                                    )
-                                    setEstimate({ score: est.data.score, ci68: est.data.ci68 })
-                                } finally {
-                                    setLoading(false)
+                            setEstimate(null)
+                            setQuestionIdx(0)
+                            setNumCorrect(0)
+                            setInSession(true)
+                            await loadQuestion()
+                        }}
+                    >
+                        Start session
+                    </button>
+                    {inSession && (
+                        <div className="text-sm text-gray-600">
+                            Q {questionIdx + 1} / {sessionLen} · Correct: {numCorrect}
+                        </div>
+                    )}
+                </div>
+                {inSession && (
+                    <div className="w-full h-2 bg-gray-200 rounded mb-3">
+                        <div className="h-2 bg-blue-600 rounded" style={{ width: `${((questionIdx + 1) / sessionLen) * 100}%` }} />
+                    </div>
+                )}
+
+                {latex && (
+                    <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3">
+                        <BlockMath math={latex} />
+                    </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                    {choices && choices.length > 0 ? (
+                        <div className="flex flex-col gap-2 w-full">
+                            {choices.map((c, idx) => (
+                                <label
+                                    key={idx}
+                                    className={`flex items-center gap-3 p-3 border rounded hover:bg-gray-50 ${selectedIdx === idx ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}
+                                >
+                                    <input
+                                        type="radio"
+                                        className="accent-blue-600"
+                                        name="mc"
+                                        checked={selectedIdx === idx}
+                                        onChange={() => setSelectedIdx(idx)}
+                                    />
+                                    <span>{c}</span>
+                                </label>
+                            ))}
+                        </div>
+                    ) : (
+                        <input
+                            className="border rounded px-3 py-2 flex-1 min-w-[220px]"
+                            value={answer}
+                            onChange={(e) => setAnswer(e.target.value)}
+                            placeholder="Enter your answer"
+                        />
+                    )}
+                    <button
+                        className="inline-flex items-center px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        disabled={loading || seed == null}
+                        onClick={submit}
+                    >
+                        Submit
+                    </button>
+                    {inSession && result && (
+                        <button
+                            className="inline-flex items-center px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50"
+                            disabled={loading}
+                            onClick={async () => {
+                                const nextIdx = questionIdx + 1
+                                if (nextIdx >= sessionLen) {
+                                    setLoading(true)
+                                    try {
+                                        const est = await axios.post<{ score: number; ci68: [number, number] }>(
+                                            `${apiBase}/estimate`,
+                                            { correct: numCorrect, total: sessionLen }
+                                        )
+                                        setEstimate({ score: est.data.score, ci68: est.data.ci68 })
+                                    } finally {
+                                        setLoading(false)
+                                    }
+                                    setInSession(false)
+                                } else {
+                                    setQuestionIdx(nextIdx)
+                                    setResult(null)
+                                    setAnswer('')
+                                    await loadQuestion()
                                 }
-                                setInSession(false)
-                            } else {
-                                setQuestionIdx(nextIdx)
-                                setResult(null)
-                                setAnswer('')
-                                await loadQuestion()
+                            }}
+                        >
+                            {questionIdx + 1 >= sessionLen ? 'Finish' : 'Next'}
+                        </button>
+                    )}
+                </div>
+
+                {result && (
+                    <div className="mt-3">
+                        <div className={`font-semibold ${result.correct ? 'text-emerald-700' : 'text-red-700'}`}>
+                            {result.correct ? 'Correct' : 'Incorrect'}
+                        </div>
+                        <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
+                        {!result.correct && result.why_incorrect_selected && (
+                            <div className="mt-1 text-sm text-red-700">Why selected option is wrong: {result.why_incorrect_selected}</div>
+                        )}
+                        <div className="mt-2">
+                            <div className="font-semibold">Explanation</div>
+                            <ol className="list-decimal list-inside space-y-1">
+                                {result.explanation_steps.map((s, i) => (
+                                    <li key={i}>{s}</li>
+                                ))}
+                            </ol>
+                        </div>
+                    </div>
+                )}
+
+                {estimate && (
+                    <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
+                        <div className="font-bold">Estimated SAT Math score</div>
+                        <div className="text-2xl">
+                            {estimate.score}{' '}
+                            <span className="text-sm text-gray-600">(68% CI {estimate.ci68[0]}–{estimate.ci68[1]})</span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                            Start another session or continue practicing individual questions.
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-4">
+                    <button
+                        className="inline-flex items-center px-3 py-2 rounded bg-gray-700 text-white hover:bg-gray-800 disabled:opacity-50"
+                        disabled={loading || !userId}
+                        onClick={async () => {
+                            setLoading(true)
+                            try {
+                                const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
+                                    `${apiBase}/stats`,
+                                    { params: { user_id: userId } }
+                                )
+                                setStats(resp.data)
+                            } finally {
+                                setLoading(false)
                             }
                         }}
                     >
-                        {questionIdx + 1 >= sessionLen ? 'Finish' : 'Next'}
+                        My Stats
                     </button>
-                )}
-            </div>
-
-            {result && (
-                <div style={{ marginTop: 12 }}>
-                    <div style={{ fontWeight: 600, color: result.correct ? 'green' : 'crimson' }}>
-                        {result.correct ? 'Correct' : 'Incorrect'}
-                    </div>
-                    <div>Correct answer: {result.correct_answer}</div>
-                    {!result.correct && result.why_incorrect_selected && (
-                        <div style={{ marginTop: 6, color: '#a33' }}>Why selected option is wrong: {result.why_incorrect_selected}</div>
-                    )}
-                    <div style={{ marginTop: 8 }}>
-                        <div style={{ fontWeight: 600 }}>Explanation</div>
-                        <ol>
-                            {result.explanation_steps.map((s, i) => (
-                                <li key={i}>{s}</li>
-                            ))}
-                        </ol>
-                    </div>
-                </div>
-            )}
-
-            {estimate && (
-                <div style={{ marginTop: 16, padding: 12, border: '1px solid #ddd', borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700 }}>Estimated SAT Math score</div>
-                    <div style={{ fontSize: 24 }}>
-                        {estimate.score} <span style={{ fontSize: 14 }}>(68% CI {estimate.ci68[0]}–{estimate.ci68[1]})</span>
-                    </div>
-                    <div style={{ marginTop: 8 }}>
-                        Start another session or continue practicing individual questions.
-                    </div>
-                </div>
-            )}
-
-            <div style={{ marginTop: 16 }}>
-                <button
-                    disabled={loading || !userId}
-                    onClick={async () => {
-                        setLoading(true)
-                        try {
-                            const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
-                                `${apiBase}/stats`,
-                                { params: { user_id: userId } }
-                            )
-                            setStats(resp.data)
-                        } finally {
-                            setLoading(false)
-                        }
-                    }}
-                >
-                    My Stats
-                </button>
-                {stats && (
-                    <table style={{ width: '100%', marginTop: 8, borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: 4 }}>Skill</th>
-                                <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: 4 }}>Attempts</th>
-                                <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: 4 }}>Correct</th>
-                                <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: 4 }}>Accuracy</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.entries(stats).map(([sk, v]) => (
-                                <tr key={sk}>
-                                    <td style={{ padding: 4 }}>{sk}</td>
-                                    <td style={{ textAlign: 'right', padding: 4 }}>{v.attempts}</td>
-                                    <td style={{ textAlign: 'right', padding: 4 }}>{v.correct}</td>
-                                    <td style={{ textAlign: 'right', padding: 4 }}>{Math.round(v.accuracy * 100)}%</td>
+                    {stats && (
+                        <table className="w-full mt-2 border-collapse">
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="text-left p-2">Skill</th>
+                                    <th className="text-right p-2">Attempts</th>
+                                    <th className="text-right p-2">Correct</th>
+                                    <th className="text-right p-2">Accuracy</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                            </thead>
+                            <tbody>
+                                {Object.entries(stats).map(([sk, v]) => (
+                                    <tr key={sk} className="border-b last:border-0">
+                                        <td className="p-2">{sk}</td>
+                                        <td className="text-right p-2">{v.attempts}</td>
+                                        <td className="text-right p-2">{v.correct}</td>
+                                        <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
         </div>
     )

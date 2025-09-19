@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Python: Test Setup",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_setup.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Python: Basic Data Analysis",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/01_basic_data_analysis.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Jupyter: Interactive Window",
+            "type": "python",
+            "request": "launch",
+            "module": "jupyter",
+            "args": [
+                "notebook",
+                "--no-browser",
+                "--port=8888"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+} 
