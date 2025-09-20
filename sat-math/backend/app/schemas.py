@@ -54,3 +54,16 @@ class EstimateResponse(BaseModel):
     score: int
     ci68: Tuple[int, int]
     p_mean: float
+
+
+class GenerateAIRequest(BaseModel):
+    domain: Optional[str] = Field(default="Algebra")
+    skill: Optional[str] = Field(default="linear_equation_mc")
+    difficulty: Optional[str] = Field(default="medium")
+
+
+class GenerateAIResponse(BaseModel):
+    prompt_latex: str
+    choices: List[str]
+    correct_index: int
+    explanation_steps: List[str]

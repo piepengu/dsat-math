@@ -1,7 +1,9 @@
 ﻿import random
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI
+import os
+import json
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -34,9 +36,16 @@ from .schemas import (
     EstimateResponse,
     GenerateRequest,
     GenerateResponse,
+    GenerateAIRequest,
+    GenerateAIResponse,
     GradeRequest,
     GradeResponse,
 )
+try:
+    import google.generativeai as genai
+    _HAS_GENAI = True
+except Exception:
+    _HAS_GENAI = False
 
 app = FastAPI()
 
@@ -229,3 +238,43 @@ def stats(
 def estimate(req: EstimateRequest):
     score, ci, p_mean = estimate_math_sat(req.correct, req.total)
     return EstimateResponse(score=score, ci68=ci, p_mean=p_mean)
+
+
+@app.post("/generate_ai", response_model=GenerateAIResponse)
+def generate_ai(req: GenerateAIRequest):
+    if not _HAS_GENAI:
+        raise HTTPException(status_code=500, detail="AI not available on server")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+    genai.configure(api_key=api_key)
+
+    prompt = (
+        "You are an expert DSAT Math question writer. Generate one medium-level multiple-choice question.\n"
+        f"Domain: {req.domain}. Skill: {req.skill}.\n"
+        "Return ONLY a compact JSON with keys: prompt_latex (KaTeX-ready), choices (array of 4 strings), correct_index (0-3), explanation_steps (array of 4-6 short steps).\n"
+        "No code fences or extra text before/after JSON."
+    )
+
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+    try:
+        resp = model.generate_content(prompt)
+        text = (resp.text or "").strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            text = text.replace("json", "", 1).strip()
+        data = json.loads(text)
+        choices = data.get("choices") or []
+        correct_index = int(data.get("correct_index", -1))
+        steps = data.get("explanation_steps") or []
+        prompt_latex = data.get("prompt_latex") or ""
+        if not (isinstance(choices, list) and len(choices) == 4 and 0 <= correct_index < 4 and prompt_latex):
+            raise ValueError("Invalid AI response shape")
+        return GenerateAIResponse(
+            prompt_latex=prompt_latex,
+            choices=list(map(str, choices)),
+            correct_index=correct_index,
+            explanation_steps=[str(s) for s in steps],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
