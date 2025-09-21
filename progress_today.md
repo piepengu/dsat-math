@@ -49,3 +49,36 @@ What’s next
 - Geometry/trig diagrams and richer formatting.
 - Adaptive difficulty; expanded analytics dashboard.
 - Auth or simple session management; persist user profiles.
+
+Next Sprint Plan (ordered: easiest → harder)
+1) UX polish (very easy)
+   - Show which option was correct after submit; expand/collapse full explanation. (DONE)
+
+2) Difficulty/topic controls (easy)
+   - Add “Difficulty” and “Topic/Skill” selectors; pass to /generate or /generate_ai. (NEXT)
+
+3) Persist AI attempts (easy)
+   - Include source='ai' and correct_index in attempt log so stats include AI items.
+
+4) Basic rate limiting/quota (easy)
+   - Cap AI calls per session/user; local counter + backend guard.
+
+5) Server-side validation/fallbacks (medium)
+   - Sanity-check AI answers (numeric/symbolic) and fall back to templates on failure.
+
+6) Diagram support (template-based) (medium)
+   - Add SVG components for triangles/circles; generators return diagram params; render figure with prompt.
+
+7) Diagram support (AI-assisted) (medium-hard)
+   - /generate_ai returns prompt_latex + structured diagram spec (shapes/points/labels); render via SVG; validate spec.
+
+8) Enhanced analytics (medium)
+   - Per-topic accuracy trends, time-to-answer, AI vs template performance.
+
+9) Adaptive difficulty (medium-hard)
+   - Adjust difficulty based on rolling accuracy; simple ELO/moving average.
+
+10) Auth/sessions (harder)
+   - Optional user accounts; keep stats across devices; migrate to Postgres.
+
+Note: We will continue with step 2 next (difficulty/topic controls).
