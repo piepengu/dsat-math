@@ -64,13 +64,30 @@ function App() {
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
 
     const renderInlineMath = (text: string) =>
-        text.split(/(\$[^$]+\$)/g).map((seg, i) =>
-            seg.startsWith('$') && seg.endsWith('$') ? (
-                <InlineMath key={i} math={seg.slice(1, -1)} />
-            ) : (
-                <span key={i}>{seg}</span>
-            )
+        text.split(/(\$[^$]+\$)/g).map((seg, i) => {
+            if (seg.startsWith('$') && seg.endsWith('$')) {
+                return <InlineMath key={i} math={seg.slice(1, -1)} />
+            }
+            // Clean common LaTeX spacing commands accidentally left in plain text
+            const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
+            return <span key={i}>{cleaned}</span>
+        })
+
+    const renderWithEnvironments = (text: string) => {
+        const envRe = /(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})/g
+        const parts = text.split(envRe)
+        return parts.map((seg, i) =>
+            envRe.test(seg)
+                ? (
+                      <div key={`env-${i}`} className="my-2">
+                          <BlockMath math={seg} />
+                      </div>
+                  )
+                : (
+                      <span key={`txt-${i}`}>{renderInlineMath(seg)}</span>
+                  )
         )
+    }
 
     const apiBase = useMemo(() => {
         // Use env in production; fallback to local for dev
@@ -283,10 +300,10 @@ function App() {
                                               <BlockMath math={seg} />
                                           </div>
                                       ) : (
-                                          <span key={i}>{seg}</span>
+                                          <span key={i}>{renderInlineMath(seg)}</span>
                                       )
                                   )
-                                : renderInlineMath(latex)
+                                : renderWithEnvironments(latex)
                             : <BlockMath math={latex} />}
                     </div>
                 )}
