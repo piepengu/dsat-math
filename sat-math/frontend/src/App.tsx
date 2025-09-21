@@ -33,6 +33,13 @@ type GradeResponse = {
     why_incorrect_selected?: string
 }
 
+type GenerateAIResponse = {
+    prompt_latex: string
+    choices: string[]
+    correct_index: number
+    explanation_steps: string[]
+}
+
 function App() {
     const [domain, setDomain] = useState<Domain>('Algebra')
     const [skill, setSkill] = useState<Skill>('linear_equation')
@@ -51,6 +58,9 @@ function App() {
     const [userId, setUserId] = useState<string>('')
     const [stats, setStats] = useState<Record<string, { attempts: number; correct: number; accuracy: number }> | null>(null)
     const [lastError, setLastError] = useState<string | null>(null)
+    const [useAI, setUseAI] = useState<boolean>(false)
+    const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
+    const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
 
     const apiBase = useMemo(() => {
         // Use env in production; fallback to local for dev
@@ -78,14 +88,29 @@ function App() {
         setSelectedIdx(null)
         setChoices(null)
         setLastError(null)
+        setAiCorrectIndex(null)
+        setAiExplanation(null)
         try {
-            const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
-                domain,
-                skill,
-            })
-            setLatex(resp.data.prompt_latex)
-            setSeed(resp.data.seed)
-            setChoices(resp.data.choices ?? null)
+            if (useAI) {
+                const resp = await axios.post<GenerateAIResponse>(`${apiBase}/generate_ai`, {
+                    domain,
+                    skill,
+                    difficulty: 'medium',
+                })
+                setLatex(resp.data.prompt_latex)
+                setSeed(-1) // AI items are not seeded
+                setChoices(resp.data.choices)
+                setAiCorrectIndex(resp.data.correct_index)
+                setAiExplanation(resp.data.explanation_steps)
+            } else {
+                const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
+                    domain,
+                    skill,
+                })
+                setLatex(resp.data.prompt_latex)
+                setSeed(resp.data.seed)
+                setChoices(resp.data.choices ?? null)
+            }
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
             setLastError(msg)
@@ -99,22 +124,33 @@ function App() {
         setLoading(true)
         setLastError(null)
         try {
-            const payload: any = {
-                domain,
-                skill,
-                seed,
-                user_id: userId || 'anonymous',
-            }
-            if (choices && choices.length > 0) {
-                payload.selected_choice_index = selectedIdx ?? -1
-                payload.user_answer = ''
+            if (useAI && choices && aiCorrectIndex != null) {
+                const isMC = choices.length > 0
+                const correct = isMC ? (selectedIdx ?? -1) === aiCorrectIndex : false
+                const correctAnswer = isMC ? choices[aiCorrectIndex] : ''
+                const explanation = aiExplanation ?? []
+                setResult({
+                    correct,
+                    correct_answer: correctAnswer,
+                    explanation_steps: explanation,
+                })
+                if (inSession) setNumCorrect((c) => c + (correct ? 1 : 0))
             } else {
-                payload.user_answer = answer
-            }
-            const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
-            setResult(resp.data)
-            if (inSession) {
-                setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
+                const payload: any = {
+                    domain,
+                    skill,
+                    seed,
+                    user_id: userId || 'anonymous',
+                }
+                if (choices && choices.length > 0) {
+                    payload.selected_choice_index = selectedIdx ?? -1
+                    payload.user_answer = ''
+                } else {
+                    payload.user_answer = answer
+                }
+                const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
+                setResult(resp.data)
+                if (inSession) setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
             }
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
@@ -149,6 +185,15 @@ function App() {
                         <option value="Advanced">Advanced Math</option>
                         <option value="Geometry">Geometry & Trig</option>
                     </select>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                        <input
+                            type="checkbox"
+                            className="accent-indigo-600"
+                            checked={useAI}
+                            onChange={(e) => setUseAI(e.target.checked)}
+                        />
+                        Use AI
+                    </label>
                     <select
                         className="border rounded px-3 py-2 bg-white"
                         value={skill}
