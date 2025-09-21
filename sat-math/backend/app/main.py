@@ -1,8 +1,9 @@
-﻿import random
+﻿import json
+import os
+import re
+import random
 from typing import List, Optional
 
-import os
-import json
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -34,15 +35,17 @@ from .schemas import (
     AttemptOut,
     EstimateRequest,
     EstimateResponse,
-    GenerateRequest,
-    GenerateResponse,
     GenerateAIRequest,
     GenerateAIResponse,
+    GenerateRequest,
+    GenerateResponse,
     GradeRequest,
     GradeResponse,
 )
+
 try:
     import google.generativeai as genai
+
     _HAS_GENAI = True
 except Exception:
     _HAS_GENAI = False
@@ -253,7 +256,7 @@ def generate_ai(req: GenerateAIRequest):
         "You are an expert DSAT Math question writer. Generate one medium-level multiple-choice question.\n"
         f"Domain: {req.domain}. Skill: {req.skill}.\n"
         "Return ONLY a compact JSON with keys: prompt_latex (KaTeX-ready), choices (array of 4 strings), correct_index (0-3), explanation_steps (array of 4-6 short steps).\n"
-        "No code fences or extra text before/after JSON."
+        "Important: In JSON strings, escape EVERY backslash in LaTeX as \\\\ (e.g., \\frac, \\sqrt). No code fences or extra text."
     )
 
     model = genai.GenerativeModel(model_name="gemini-1.5-flash")
@@ -263,12 +266,30 @@ def generate_ai(req: GenerateAIRequest):
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
-        data = json.loads(text)
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as je:
+            if "Invalid \\escape" in str(je):
+                # Attempt to escape backslashes inside prompt_latex value only
+                m = re.search(r'("prompt_latex"\s*:\s*")(.*?)(")', text, flags=re.DOTALL)
+                if m:
+                    start_idx, end_idx = m.start(2), m.end(2)
+                    val = text[start_idx:end_idx]
+                    val_fixed = val.replace('\\', '\\\\')
+                    text = text[:start_idx] + val_fixed + text[end_idx:]
+                data = json.loads(text)
+            else:
+                raise
         choices = data.get("choices") or []
         correct_index = int(data.get("correct_index", -1))
         steps = data.get("explanation_steps") or []
         prompt_latex = data.get("prompt_latex") or ""
-        if not (isinstance(choices, list) and len(choices) == 4 and 0 <= correct_index < 4 and prompt_latex):
+        if not (
+            isinstance(choices, list)
+            and len(choices) == 4
+            and 0 <= correct_index < 4
+            and prompt_latex
+        ):
             raise ValueError("Invalid AI response shape")
         return GenerateAIResponse(
             prompt_latex=prompt_latex,
