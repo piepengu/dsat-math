@@ -264,8 +264,34 @@ function App() {
                 )}
 
                 {latex && (
-                    <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3">
-                        <BlockMath math={latex} />
+                    <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
+                        {useAI ? (
+                            latex.includes('$$') ? (
+                                // Render $$ ... $$ blocks split
+                                latex.split('$$').map((seg, i) =>
+                                    i % 2 === 1 ? (
+                                        <div key={i} className="my-2">
+                                            <BlockMath math={seg} />
+                                        </div>
+                                    ) : (
+                                        <span key={i}>{seg}</span>
+                                    )
+                                )
+                            ) : (
+                                // Render inline $...$ math mixed with text
+                                latex.split(/(\$[^$]+\$)/g).map((seg, i) =>
+                                    seg.startsWith('$') && seg.endsWith('$') ? (
+                                        <span key={i} className="mx-1">
+                                            <BlockMath math={seg.slice(1, -1)} />
+                                        </span>
+                                    ) : (
+                                        <span key={i}>{seg}</span>
+                                    )
+                                )
+                            )
+                        ) : (
+                            <BlockMath math={latex} />
+                        )}
                     </div>
                 )}
 
