@@ -61,6 +61,7 @@ function App() {
     const [useAI, setUseAI] = useState<boolean>(false)
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
+    const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
 
     const apiBase = useMemo(() => {
         // Use env in production; fallback to local for dev
@@ -166,7 +167,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return (
+  return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
@@ -298,21 +299,40 @@ function App() {
                 <div className="flex flex-wrap items-center gap-2">
                     {choices && choices.length > 0 ? (
                         <div className="flex flex-col gap-2 w-full">
-                            {choices.map((c, idx) => (
-                                <label
-                                    key={idx}
-                                    className={`flex items-center gap-3 p-3 border rounded hover:bg-gray-50 ${selectedIdx === idx ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}
-                                >
-                                    <input
-                                        type="radio"
-                                        className="accent-blue-600"
-                                        name="mc"
-                                        checked={selectedIdx === idx}
-                                        onChange={() => setSelectedIdx(idx)}
-                                    />
-                                    <span>{c}</span>
-                                </label>
-                            ))}
+                            {(() => {
+                                const resolvedCorrectIdx = useAI && aiCorrectIndex != null
+                                    ? aiCorrectIndex
+                                    : (result && choices ? choices.findIndex((cc) => cc === result.correct_answer) : -1)
+                                return choices.map((c, idx) => {
+                                    let base = 'flex items-center gap-3 p-3 border rounded hover:bg-gray-50 '
+                                    if (result) {
+                                        if (idx === resolvedCorrectIdx) base += 'border-emerald-600 bg-emerald-50 '
+                                        else if (selectedIdx === idx && !result.correct) base += 'border-red-600 bg-red-50 '
+                                        else base += 'border-gray-300 '
+                                    } else {
+                                        base += selectedIdx === idx ? 'border-indigo-600 bg-indigo-50 ' : 'border-gray-300 '
+                                    }
+                                    return (
+                                        <label key={idx} className={base}>
+                                            <input
+                                                type="radio"
+                                                className="accent-indigo-600"
+                                                name="mc"
+                                                checked={selectedIdx === idx}
+                                                onChange={() => setSelectedIdx(idx)}
+                                                disabled={!!result}
+                                            />
+                                            <span>{c}</span>
+                                            {result && idx === resolvedCorrectIdx && (
+                                                <span className="ml-2 text-xs text-emerald-700">(Correct)</span>
+                                            )}
+                                            {result && selectedIdx === idx && !result.correct && (
+                                                <span className="ml-2 text-xs text-red-700">(Your choice)</span>
+                                            )}
+                                        </label>
+                                    )
+                                })
+                            })()}
                         </div>
                     ) : (
                         <input
@@ -369,14 +389,22 @@ function App() {
                         {!result.correct && result.why_incorrect_selected && (
                             <div className="mt-1 text-sm text-red-700">Why selected option is wrong: {result.why_incorrect_selected}</div>
                         )}
-                        <div className="mt-2">
-                            <div className="font-semibold">Explanation</div>
-                            <ol className="list-decimal list-inside space-y-1">
-                                {result.explanation_steps.map((s, i) => (
-                                    <li key={i}>{s}</li>
-                                ))}
-                            </ol>
-                        </div>
+                        <button
+                            className="mt-2 text-sm text-indigo-700 hover:underline"
+                            onClick={() => setExplanationOpen((v) => !v)}
+                        >
+                            {explanationOpen ? 'Hide explanation' : 'Show explanation'}
+                        </button>
+                        {explanationOpen && (
+                            <div className="mt-2">
+                                <div className="font-semibold">Explanation</div>
+                                <ol className="list-decimal list-inside space-y-1">
+                                    {result.explanation_steps.map((s, i) => (
+                                        <li key={i}>{s}</li>
+                                    ))}
+                                </ol>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -390,7 +418,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-                    </div>
+      </div>
                 )}
 
                 <div className="mt-4">
@@ -411,7 +439,7 @@ function App() {
                         }}
                     >
                         My Stats
-                    </button>
+        </button>
                     {stats && (
                         <table className="w-full mt-2 border-collapse">
                             <thead>
@@ -436,8 +464,8 @@ function App() {
                     )}
                 </div>
             </div>
-        </div>
-    )
+      </div>
+  )
 }
 
 export default App
