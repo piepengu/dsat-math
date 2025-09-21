@@ -1,7 +1,7 @@
 ﻿import json
 import os
-import re
 import random
+import re
 from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -259,7 +259,10 @@ def generate_ai(req: GenerateAIRequest):
         "Important: In JSON strings, escape EVERY backslash in LaTeX as \\\\ (e.g., \\frac, \\sqrt). No code fences or extra text."
     )
 
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        generation_config={"response_mime_type": "application/json"},
+    )
     try:
         resp = model.generate_content(prompt)
         text = (resp.text or "").strip()
@@ -271,11 +274,13 @@ def generate_ai(req: GenerateAIRequest):
         except json.JSONDecodeError as je:
             if "Invalid \\escape" in str(je):
                 # Attempt to escape backslashes inside prompt_latex value only
-                m = re.search(r'("prompt_latex"\s*:\s*")(.*?)(")', text, flags=re.DOTALL)
+                m = re.search(
+                    r'("prompt_latex"\s*:\s*")(.*?)(")', text, flags=re.DOTALL
+                )
                 if m:
                     start_idx, end_idx = m.start(2), m.end(2)
                     val = text[start_idx:end_idx]
-                    val_fixed = val.replace('\\', '\\\\')
+                    val_fixed = val.replace("\\", "\\\\")
                     text = text[:start_idx] + val_fixed + text[end_idx:]
                 data = json.loads(text)
             else:
