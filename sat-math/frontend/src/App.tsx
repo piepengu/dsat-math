@@ -1,7 +1,7 @@
 import axios from 'axios'
 import 'katex/dist/katex.min.css'
 import { useEffect, useMemo, useState } from 'react'
-import { BlockMath } from 'react-katex'
+import { BlockMath, InlineMath } from 'react-katex'
 import './App.css'
 
 type Domain = 'Algebra' | 'PSD' | 'Advanced' | 'Geometry'
@@ -62,6 +62,15 @@ function App() {
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
+
+    const renderInlineMath = (text: string) =>
+        text.split(/(\$[^$]+\$)/g).map((seg, i) =>
+            seg.startsWith('$') && seg.endsWith('$') ? (
+                <InlineMath key={i} math={seg.slice(1, -1)} />
+            ) : (
+                <span key={i}>{seg}</span>
+            )
+        )
 
     const apiBase = useMemo(() => {
         // Use env in production; fallback to local for dev
@@ -167,7 +176,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
@@ -266,33 +275,19 @@ function App() {
 
                 {latex && (
                     <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
-                        {useAI ? (
-                            latex.includes('$$') ? (
-                                // Render $$ ... $$ blocks split
-                                latex.split('$$').map((seg, i) =>
-                                    i % 2 === 1 ? (
-                                        <div key={i} className="my-2">
-                                            <BlockMath math={seg} />
-                                        </div>
-                                    ) : (
-                                        <span key={i}>{seg}</span>
-                                    )
-                                )
-                            ) : (
-                                // Render inline $...$ math mixed with text
-                                latex.split(/(\$[^$]+\$)/g).map((seg, i) =>
-                                    seg.startsWith('$') && seg.endsWith('$') ? (
-                                        <span key={i} className="mx-1">
-                                            <BlockMath math={seg.slice(1, -1)} />
-                                        </span>
-                                    ) : (
-                                        <span key={i}>{seg}</span>
-                                    )
-                                )
-                            )
-                        ) : (
-                            <BlockMath math={latex} />
-                        )}
+                        {useAI
+                            ? latex.includes('$$')
+                                ? latex.split('$$').map((seg, i) =>
+                                      i % 2 === 1 ? (
+                                          <div key={i} className="my-2">
+                                              <BlockMath math={seg} />
+                                          </div>
+                                      ) : (
+                                          <span key={i}>{seg}</span>
+                                      )
+                                  )
+                                : renderInlineMath(latex)
+                            : <BlockMath math={latex} />}
                     </div>
                 )}
 
@@ -322,7 +317,7 @@ function App() {
                                                 onChange={() => setSelectedIdx(idx)}
                                                 disabled={!!result}
                                             />
-                                            <span>{c}</span>
+                                            <span className="flex items-center gap-2">{renderInlineMath(c)}</span>
                                             {result && idx === resolvedCorrectIdx && (
                                                 <span className="ml-2 text-xs text-emerald-700">(Correct)</span>
                                             )}
@@ -418,7 +413,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -439,7 +434,7 @@ function App() {
                         }}
                     >
                         My Stats
-        </button>
+                    </button>
                     {stats && (
                         <table className="w-full mt-2 border-collapse">
                             <thead>
@@ -464,8 +459,8 @@ function App() {
                     )}
                 </div>
             </div>
-      </div>
-  )
+        </div>
+    )
 }
 
 export default App
