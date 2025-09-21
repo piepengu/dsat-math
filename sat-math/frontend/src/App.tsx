@@ -73,19 +73,38 @@ function App() {
             return <span key={i}>{cleaned}</span>
         })
 
+    const normalizeLatex = (text: string) => {
+        // Remove disruptive commands and normalize spacing
+        let t = text
+            .replace(/\\label\{[^}]*\}/g, '')
+            .replace(/\\\s/g, ' ')
+            .replace(/\\,/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+        return t
+    }
+
+    const shouldRenderAsBlock = (text: string) => {
+        // If there are environments or obvious math macros but no $ delimiters, render as block
+        if (/\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/.test(text)) return true
+        const hasMathMacros = /(\\frac|\\sqrt|\\sum|\\int|\\left|\\right|\\begin|\\end|\^|_)/.test(text)
+        const hasDelimiters = /\$[^$]+\$|\$\$[\s\S]*?\$\$/.test(text)
+        return hasMathMacros && !hasDelimiters
+    }
+
     const renderWithEnvironments = (text: string) => {
         const envRe = /(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})/g
         const parts = text.split(envRe)
         return parts.map((seg, i) =>
             envRe.test(seg)
                 ? (
-                      <div key={`env-${i}`} className="my-2">
-                          <BlockMath math={seg} />
-                      </div>
-                  )
+                    <div key={`env-${i}`} className="my-2">
+                        <BlockMath math={seg} />
+                    </div>
+                )
                 : (
-                      <span key={`txt-${i}`}>{renderInlineMath(seg)}</span>
-                  )
+                    <span key={`txt-${i}`}>{renderInlineMath(seg)}</span>
+                )
         )
     }
 
@@ -293,17 +312,22 @@ function App() {
                 {latex && (
                     <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
                         {useAI
-                            ? latex.includes('$$')
-                                ? latex.split('$$').map((seg, i) =>
-                                      i % 2 === 1 ? (
-                                          <div key={i} className="my-2">
-                                              <BlockMath math={seg} />
-                                          </div>
-                                      ) : (
-                                          <span key={i}>{renderInlineMath(seg)}</span>
+                            ? (() => {
+                                  const norm = normalizeLatex(latex)
+                                  if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
+                                  if (norm.includes('$$')) {
+                                      return norm.split('$$').map((seg, i) =>
+                                    i % 2 === 1 ? (
+                                        <div key={i} className="my-2">
+                                            <BlockMath math={seg} />
+                                        </div>
+                                    ) : (
+                                              <span key={i}>{renderInlineMath(seg)}</span>
+                                    )
                                       )
-                                  )
-                                : renderWithEnvironments(latex)
+                                  }
+                                  return renderWithEnvironments(norm)
+                              })()
                             : <BlockMath math={latex} />}
                     </div>
                 )}
