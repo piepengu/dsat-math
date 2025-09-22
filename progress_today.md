@@ -1,5 +1,23 @@
 ﻿DSAT Math App - Progress Summary (date: 2025-09-19)
 
+Updates (2025-09-22)
+- Backend
+  - Added POST `/attempt_ai` to persist AI-generated MC attempts (logs `user_id`, domain/skill, selection, correctness).
+  - Hardened Gemini JSON parsing; clarified escaping in AI prompt; lint cleanups.
+  - Confirmed CORS works with the new frontend origin.
+- Frontend
+  - Implemented AI attempt logging: after client-side grading, the app POSTs to `/attempt_ai` so stats include AI items.
+  - Improved LaTeX normalization for environments (e.g., `cases`, `aligned`) so multi-line prompts render correctly.
+  - UX polish: the “Hide explanation” toggle now hides both the correct answer and the step list.
+- Deployment
+  - Moved frontend hosting to GitHub Pages.
+    - Published the built site to `docs/` on `master` and added a GitHub Actions Pages workflow to deploy automatically.
+    - Ensured SPA fallback via `404.html`; added `.nojekyll` as needed.
+  - Updated Render `FRONTEND_ORIGIN` to the Pages URL; validated health and cross-origin calls.
+- Verification
+  - “Use AI” → Submit → “My Stats” increases attempts for the selected skill.
+  - API checks: `/attempts?user_id=...` and `/stats` reflect AI attempts.
+
 What we accomplished today
 - Repo cleanup & structure
   - Flattened repo layout; fixed Python package imports and tests.
@@ -55,10 +73,10 @@ Next Sprint Plan (ordered: easiest → harder)
    - Show which option was correct after submit; expand/collapse full explanation. (DONE)
 
 2) Difficulty/topic controls (easy)
-   - Add “Difficulty” and “Topic/Skill” selectors; pass to /generate or /generate_ai. (NEXT)
+   - Add “Difficulty” and “Topic/Skill” selectors; pass to /generate or /generate_ai. (DONE)
 
 3) Persist AI attempts (easy)
-   - Include source='ai' and correct_index in attempt log so stats include AI items.
+   - Include source='ai' and correct_index in attempt log so stats include AI items. (DONE)
 
 4) Basic rate limiting/quota (easy)
    - Cap AI calls per session/user; local counter + backend guard.
