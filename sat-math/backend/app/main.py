@@ -33,6 +33,8 @@ from .generators import (
 from .models import Attempt
 from .schemas import (
     AttemptOut,
+    AttemptAIRequest,
+    AttemptAIResponse,
     EstimateRequest,
     EstimateResponse,
     GenerateAIRequest,
@@ -126,7 +128,11 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
     elif req.domain == "Algebra" and req.skill == "linear_equation_mc":
         correct, sol, steps, why_sel = grade_linear_equation_mc(
             req.seed,
-            req.selected_choice_index if req.selected_choice_index is not None else -1,
+            (
+                req.selected_choice_index
+                if req.selected_choice_index is not None
+                else -1
+            ),
         )
         # persist attempt below as usual, but include why on response
         user_id = req.user_id or "anonymous"
@@ -243,20 +249,47 @@ def estimate(req: EstimateRequest):
     return EstimateResponse(score=score, ci68=ci, p_mean=p_mean)
 
 
+@app.post("/attempt_ai", response_model=AttemptAIResponse)
+def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
+    # Persist AI attempt with a synthetic seed of -1 (AI-generated)
+    correct = bool(req.selected_choice_index == req.correct_index)
+    db_attempt = Attempt(
+        user_id=req.user_id or "anonymous",
+        domain=req.domain,
+        skill=req.skill,
+        seed=req.seed if (req.seed is not None) else -1,
+        correct=correct,
+        correct_answer=str(req.correct_answer or ""),
+    )
+    db.add(db_attempt)
+    db.commit()
+    return AttemptAIResponse(ok=True, correct=correct)
+
+
 @app.post("/generate_ai", response_model=GenerateAIResponse)
 def generate_ai(req: GenerateAIRequest):
     if not _HAS_GENAI:
-        raise HTTPException(status_code=500, detail="AI not available on server")
+        raise HTTPException(
+            status_code=500,
+            detail="AI not available on server",
+        )
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="GEMINI_API_KEY not configured",
+        )
     genai.configure(api_key=api_key)
 
     prompt = (
-        "You are an expert DSAT Math question writer. Generate one medium-level multiple-choice question.\n"
+        "You are an expert DSAT Math question writer. "
+        "Generate one medium-level multiple-choice question.\n"
         f"Domain: {req.domain}. Skill: {req.skill}.\n"
-        "Return ONLY a compact JSON with keys: prompt_latex (KaTeX-ready), choices (array of 4 strings), correct_index (0-3), explanation_steps (array of 4-6 short steps).\n"
-        "Important: In JSON strings, escape EVERY backslash in LaTeX as \\\\ (e.g., \\frac, \\sqrt). No code fences or extra text."
+        "Return ONLY a compact JSON with keys: prompt_latex (KaTeX-ready), "
+        "choices (array of 4 strings), correct_index (0-3), explanation_steps "
+        "(array of 4-6 short steps).\n"
+        "Important: In JSON strings, escape EVERY backslash in LaTeX as \\"
+        "(e.g., \\frac, \\sqrt). No code fences or extra text."
     )
 
     model = genai.GenerativeModel(
@@ -303,4 +336,7 @@ def generate_ai(req: GenerateAIRequest):
             explanation_steps=[str(s) for s in steps],
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI generation failed: {e}",
+        )

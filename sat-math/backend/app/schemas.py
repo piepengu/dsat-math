@@ -67,3 +67,18 @@ class GenerateAIResponse(BaseModel):
     choices: List[str]
     correct_index: int
     explanation_steps: List[str]
+
+
+class AttemptAIRequest(BaseModel):
+    user_id: Optional[str] = None
+    domain: str
+    skill: str
+    selected_choice_index: int
+    correct_index: int
+    correct_answer: Optional[str] = None
+    seed: Optional[int] = None
+
+
+class AttemptAIResponse(BaseModel):
+    ok: bool
+    correct: bool

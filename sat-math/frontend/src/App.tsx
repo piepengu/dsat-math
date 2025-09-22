@@ -74,14 +74,45 @@ function App() {
             return <span key={i}>{cleaned}</span>
         })
 
+    // Ensure proper line breaks inside environments like cases/aligned/array
+    const fixEnvNewlines = (text: string) => {
+        const envs = ['cases', 'aligned', 'align', 'align*', 'array', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix']
+        let fixed = text
+        for (const env of envs) {
+            const re = new RegExp(`\\\\begin\\{${env}\\}([\\s\\S]*?)\\\\end\\{${env}\\}`, 'g')
+            fixed = fixed.replace(re, (_m, inner) => {
+                // Convert single backslash + space used as a line separator to \\
+                let cleaned = String(inner)
+                    // normalize any single backslash followed by space into \\
+                    .replace(/(^|[^\\])\\ (?=\S)/g, '$1\\\\ ')
+                    // ensure double-backslashes have a space after for readability
+                    .replace(/\\\\\s*/g, '\\\\ ')
+                return `\\begin{${env}}${cleaned}\\end{${env}}`
+            })
+        }
+        return fixed
+    }
+
     const normalizeLatex = (text: string) => {
-        // Remove disruptive commands and normalize spacing
+        // Remove disruptive commands, fix environments, and normalize harmless spacing
         let t = text
+            // remove stray backslash before inline/block math delimiters like "\ $"
+            .replace(/\\\s*\$/g, '$')
+            // drop labels that can break KaTeX
             .replace(/\\label\{[^}]*\}/g, '')
-            .replace(/\\\s/g, ' ')
+
+        // Fix line separators inside environments before other cleanups
+        t = fixEnvNewlines(t)
+
+        // Clean spacing macros that sometimes leak into plain text
+        t = t
             .replace(/\\,/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
+            .replace(/\\;/g, ' ')
+            .replace(/\\!/g, ' ')
+
+        // Collapse repeated spaces (preserve backslash sequences)
+        t = t.replace(/[ \t]{2,}/g, ' ').trim()
+
         return t
     }
 
@@ -182,6 +213,20 @@ function App() {
                     explanation_steps: explanation,
                 })
                 if (inSession) setNumCorrect((c) => c + (correct ? 1 : 0))
+                // Persist AI attempt for stats
+                try {
+                    await axios.post(`${apiBase}/attempt_ai`, {
+                        user_id: userId || 'anonymous',
+                        domain,
+                        skill,
+                        selected_choice_index: selectedIdx ?? -1,
+                        correct_index: aiCorrectIndex,
+                        correct_answer: correctAnswer,
+                        seed: -1,
+                    })
+                } catch (e) {
+                    // ignore logging errors
+                }
             } else {
                 const payload: any = {
                     domain,
