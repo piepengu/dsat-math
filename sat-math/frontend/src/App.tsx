@@ -479,7 +479,6 @@ function App() {
                         <div className={`font-semibold ${result.correct ? 'text-emerald-700' : 'text-red-700'}`}>
                             {result.correct ? 'Correct' : 'Incorrect'}
                         </div>
-                        <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
                         {!result.correct && result.why_incorrect_selected && (
                             <div className="mt-1 text-sm text-red-700">Why selected option is wrong: {result.why_incorrect_selected}</div>
                         )}
@@ -491,7 +490,8 @@ function App() {
                         </button>
                         {explanationOpen && (
                             <div className="mt-2">
-                                <div className="font-semibold">Explanation</div>
+                                <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
+                                <div className="font-semibold mt-2">Explanation</div>
                                 <ol className="list-decimal list-inside space-y-1">
                                     {result.explanation_steps.map((s, i) => (
                                         <li key={i}>{s}</li>
