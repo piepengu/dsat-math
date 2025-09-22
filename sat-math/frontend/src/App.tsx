@@ -62,6 +62,7 @@ function App() {
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
+    const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
 
     const renderInlineMath = (text: string) =>
         text.split(/(\$[^$]+\$)/g).map((seg, i) => {
@@ -141,7 +142,7 @@ function App() {
                 const resp = await axios.post<GenerateAIResponse>(`${apiBase}/generate_ai`, {
                     domain,
                     skill,
-                    difficulty: 'medium',
+                    difficulty,
                 })
                 setLatex(resp.data.prompt_latex)
                 setSeed(-1) // AI items are not seeded
@@ -240,6 +241,18 @@ function App() {
                         />
                         Use AI
                     </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                        Difficulty:
+                        <select
+                            className="border rounded px-2 py-1 bg-white"
+                            value={difficulty}
+                            onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+                        >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </label>
                     <select
                         className="border rounded px-3 py-2 bg-white"
                         value={skill}
@@ -313,21 +326,21 @@ function App() {
                     <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
                         {useAI
                             ? (() => {
-                                  const norm = normalizeLatex(latex)
-                                  if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
-                                  if (norm.includes('$$')) {
-                                      return norm.split('$$').map((seg, i) =>
-                                    i % 2 === 1 ? (
-                                        <div key={i} className="my-2">
-                                            <BlockMath math={seg} />
-                                        </div>
-                                    ) : (
-                                              <span key={i}>{renderInlineMath(seg)}</span>
+                                const norm = normalizeLatex(latex)
+                                if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
+                                if (norm.includes('$$')) {
+                                    return norm.split('$$').map((seg, i) =>
+                                        i % 2 === 1 ? (
+                                            <div key={i} className="my-2">
+                                                <BlockMath math={seg} />
+                                            </div>
+                                        ) : (
+                                            <span key={i}>{renderInlineMath(seg)}</span>
+                                        )
                                     )
-                                      )
-                                  }
-                                  return renderWithEnvironments(norm)
-                              })()
+                                }
+                                return renderWithEnvironments(norm)
+                            })()
                             : <BlockMath math={latex} />}
                     </div>
                 )}
