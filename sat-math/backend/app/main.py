@@ -274,23 +274,25 @@ def generate_ai(req: GenerateAIRequest):
         # when possible
         seed = random.randint(1, 10_000_000)
         try:
-            if (
-                req.domain == "Geometry"
-                and req.skill == "pythagorean_hypotenuse"
-            ):
+            if req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
                 item = generate_pythagorean_hypotenuse(seed)
+                # Convert to a well-formed MC with 4 choices
+                sol = str(item.solution_str)
+                choices = [sol, str(int(sol) + 1), str(int(sol) - 1), str(int(sol) + 2)]
                 return GenerateAIResponse(
                     prompt_latex=item.prompt_latex,
-                    choices=[str(item.solution_str), "", "", ""],
+                    choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
                 )
             if req.domain == "Geometry" and req.skill == "pythagorean_leg":
                 item = generate_pythagorean_leg(seed)
+                sol = str(item.solution_str)
+                choices = [sol, str(int(sol) + 1), str(int(sol) - 1), str(int(sol) + 2)]
                 return GenerateAIResponse(
                     prompt_latex=item.prompt_latex,
-                    choices=[str(item.solution_str), "", "", ""],
+                    choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
@@ -377,10 +379,7 @@ def generate_ai(req: GenerateAIRequest):
             valid = False
         if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
             valid = False
-        if not (
-            isinstance(prompt_latex, str)
-            and 1 <= len(prompt_latex) <= 4000
-        ):
+        if not (isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000):
             valid = False
         # Disallow problematic commands that break KaTeX
         if re.search(
@@ -394,10 +393,7 @@ def generate_ai(req: GenerateAIRequest):
 
         # Optional diagram validation (currently supports right_triangle)
         diagram_out = None
-        if (
-            isinstance(diagram, dict)
-            and diagram.get("type") == "right_triangle"
-        ):
+        if isinstance(diagram, dict) and diagram.get("type") == "right_triangle":
             try:
                 da = int(diagram.get("a", 0))
                 db = int(diagram.get("b", 0))

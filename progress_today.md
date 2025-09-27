@@ -84,8 +84,7 @@ Next Sprint Plan (ordered: easiest → harder)
 5) Server-side validation/fallbacks (medium)
    - Sanity-check AI answers (numeric/symbolic) and fall back to templates on failure.
 
-6) Diagram support (template-based) (medium)
-   - Add SVG components for triangles/circles; generators return diagram params; render figure with prompt.
+6) Diagram support (template-based) (medium)ag
 
 7) Diagram support (AI-assisted) (medium-hard)
    - /generate_ai returns prompt_latex + structured diagram spec (shapes/points/labels); render via SVG; validate spec.

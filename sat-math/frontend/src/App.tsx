@@ -417,7 +417,7 @@ function App() {
                                 const plain = maybeRenderPlainText(latex)
                                 if (plain) return plain
                                 return <BlockMath math={latex} />
-                              })()}
+                            })()}
                     </div>
                 )}
 
