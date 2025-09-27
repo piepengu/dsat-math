@@ -1,6 +1,6 @@
 ﻿DSAT Math App - Progress Summary (date: 2025-09-19)
 
-Updates (2025-09-22)
+Updates (2025-09-27)
 - Backend
   - Added POST `/attempt_ai` to persist AI-generated MC attempts (logs `user_id`, domain/skill, selection, correctness).
   - Hardened Gemini JSON parsing; clarified escaping in AI prompt; lint cleanups.
