@@ -605,16 +605,36 @@ function RightTriangle({ a, b, labels }: RightTriangleProps) {
     const scale = maxSide > 0 ? 180 / maxSide : 1
     const ax = a * scale
     const by = b * scale
-    const width = Math.max(ax + 20, 220)
-    const height = Math.max(by + 20, 180)
+    const width = Math.max(ax + 24, 240)
+    const height = Math.max(by + 24, 200)
+    const leftX = 12
+    const baseY = by + 12
+    const hypX2 = ax + 12
+    const hypY2 = by + 12
+    const hypX1 = 12
+    const hypY1 = 12
+    const midHX = (hypX1 + hypX2) / 2
+    const midHY = (hypY1 + hypY2) / 2
+    const labelStyle: React.CSSProperties = {
+        paintOrder: 'stroke',
+        stroke: '#ffffff',
+        strokeWidth: 4,
+        strokeLinejoin: 'round',
+    }
     return (
         <div className="mb-3">
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
-                <polygon points={`10,${by + 10} ${ax + 10},${by + 10} 10,10`} fill="#eef2ff" stroke="#1f2937" />
-                <text x={(ax / 2) + 10} y={(by + 10) + 14} textAnchor="middle" fontSize="12" fill="#374151">{labels.a ?? 'a'}</text>
-                <text x={8} y={(by / 2) + 10} textAnchor="end" fontSize="12" fill="#374151">{labels.b ?? 'b'}</text>
-                <text x={(ax / 2) + 2} y={(by / 2)} fontSize="12" fill="#374151">{labels.c ?? 'c'}</text>
-                <polyline points={`10,${by + 10} 22,${by + 10} 22,${by - 2 + 10}`} fill="none" stroke="#1f2937" />
+                <polygon points={`${leftX},${baseY} ${hypX2},${baseY} ${leftX},${hypY1}`} fill="#eef2ff" stroke="#111827" />
+                <text x={leftX + ax / 2} y={baseY - 6} textAnchor="middle" fontSize="14" fill="#111827" style={labelStyle}>
+                    {labels.a ?? 'a'}
+                </text>
+                <text x={leftX + 10} y={hypY1 + by / 2} textAnchor="start" fontSize="14" fill="#111827" style={labelStyle}>
+                    {labels.b ?? 'b'}
+                </text>
+                <text x={midHX - 6} y={midHY - 6} fontSize="14" fill="#111827" style={labelStyle}>
+                    {labels.c ?? 'c'}
+                </text>
+                <polyline points={`${leftX},${baseY} ${leftX+12},${baseY} ${leftX+12},${baseY-12}`} fill="none" stroke="#111827" />
             </svg>
         </div>
     )
