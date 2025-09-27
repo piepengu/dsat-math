@@ -79,6 +79,29 @@ function App() {
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
 
+    // Domain → Skill options shown in the second dropdown
+    const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
+        Algebra: [
+            { value: 'linear_equation', label: 'Linear equation' },
+            { value: 'linear_equation_mc', label: 'Linear equation (MC)' },
+            { value: 'two_step_equation', label: 'Two-step equation' },
+            { value: 'linear_system_2x2', label: '2x2 system' },
+        ],
+        PSD: [
+            { value: 'proportion', label: 'Proportion' },
+        ],
+        Advanced: [
+            { value: 'quadratic_roots', label: 'Quadratic roots' },
+            { value: 'exponential_solve', label: 'Exponential solve' },
+        ],
+        Geometry: [
+            { value: 'pythagorean_hypotenuse', label: 'Pythagorean hypotenuse' },
+            { value: 'pythagorean_leg', label: 'Pythagorean leg' },
+        ],
+    }
+
+    const allowedSkills = useMemo(() => skillOptions[domain], [domain])
+
     const renderInlineMath = (text: string) =>
         text.split(/(\$[^$]+\$)/g).map((seg, i) => {
             if (seg.startsWith('$') && seg.endsWith('$')) {
@@ -295,7 +318,12 @@ function App() {
                     <select
                         className="border rounded px-3 py-2 bg-white"
                         value={domain}
-                        onChange={(e) => setDomain(e.target.value as Domain)}
+                        onChange={(e) => {
+                            const d = e.target.value as Domain
+                            setDomain(d)
+                            const first = (skillOptions[d][0]?.value || 'linear_equation') as Skill
+                            setSkill(first)
+                        }}
                     >
                         <option value="Algebra">Algebra</option>
                         <option value="PSD">Problem Solving & Data Analysis</option>
@@ -328,15 +356,9 @@ function App() {
                         value={skill}
                         onChange={(e) => setSkill(e.target.value as Skill)}
                     >
-                        <option value="linear_equation">Linear equation</option>
-                        <option value="linear_equation_mc">Linear equation (MC)</option>
-                        <option value="two_step_equation">Two-step equation</option>
-                        <option value="proportion">Proportion</option>
-                        <option value="linear_system_2x2">2x2 system</option>
-                        <option value="quadratic_roots">Quadratic roots</option>
-                        <option value="exponential_solve">Exponential solve</option>
-                        <option value="pythagorean_hypotenuse">Pythagorean hypotenuse</option>
-                        <option value="pythagorean_leg">Pythagorean leg</option>
+                        {allowedSkills.map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
                     </select>
                     <button
                         className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
