@@ -155,6 +155,14 @@ function App() {
         )
     }
 
+    const maybeRenderPlainText = (text: string) => {
+        const m = text.match(/^\\text\{([\s\S]*)\}$/)
+        if (m) {
+            return <span>{m[1]}</span>
+        }
+        return null
+    }
+
     const apiBase = useMemo(() => {
         // Use env in production; fallback to local for dev
         return (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE === ''
@@ -389,6 +397,8 @@ function App() {
                         {useAI
                             ? (() => {
                                 const norm = normalizeLatex(latex)
+                                const plain = maybeRenderPlainText(norm)
+                                if (plain) return plain
                                 if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
                                 if (norm.includes('$$')) {
                                     return norm.split('$$').map((seg, i) =>
@@ -403,7 +413,11 @@ function App() {
                                 }
                                 return renderWithEnvironments(norm)
                             })()
-                            : <BlockMath math={latex} />}
+                            : (() => {
+                                const plain = maybeRenderPlainText(latex)
+                                if (plain) return plain
+                                return <BlockMath math={latex} />
+                              })()}
                     </div>
                 )}
 
