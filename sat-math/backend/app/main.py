@@ -270,8 +270,34 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
 @app.post("/generate_ai", response_model=GenerateAIResponse)
 def generate_ai(req: GenerateAIRequest):
     def _fallback_mc() -> GenerateAIResponse:
-        # Fallback to a safe template-based MC item
+        # Fallback to a safe template-based item, matching requested skill
+        # when possible
         seed = random.randint(1, 10_000_000)
+        try:
+            if (
+                req.domain == "Geometry"
+                and req.skill == "pythagorean_hypotenuse"
+            ):
+                item = generate_pythagorean_hypotenuse(seed)
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=[str(item.solution_str), "", "", ""],
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                    diagram=getattr(item, "diagram", None),
+                )
+            if req.domain == "Geometry" and req.skill == "pythagorean_leg":
+                item = generate_pythagorean_leg(seed)
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=[str(item.solution_str), "", "", ""],
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                    diagram=getattr(item, "diagram", None),
+                )
+        except Exception:
+            # fall back to linear MC below
+            pass
         item = generate_linear_equation_mc(seed)
         return GenerateAIResponse(
             prompt_latex=item.prompt_latex,
