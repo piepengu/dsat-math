@@ -23,6 +23,13 @@ type GenerateResponse = {
     seed: number
     prompt_latex: string
     choices?: string[]
+    diagram?: {
+        type: string
+        a?: number
+        b?: number
+        c?: number
+        labels?: Record<string, string>
+    } | null
 }
 
 type GradeResponse = {
@@ -46,6 +53,7 @@ function App() {
     const [seed, setSeed] = useState<number | null>(null)
     const [latex, setLatex] = useState<string>('')
     const [choices, setChoices] = useState<string[] | null>(null)
+    const [diagram, setDiagram] = useState<GenerateResponse['diagram'] | null>(null)
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
     const [answer, setAnswer] = useState('')
     const [result, setResult] = useState<GradeResponse | null>(null)
@@ -180,6 +188,7 @@ function App() {
                 setChoices(resp.data.choices)
                 setAiCorrectIndex(resp.data.correct_index)
                 setAiExplanation(resp.data.explanation_steps)
+                setDiagram(null)
             } else {
                 const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
                     domain,
@@ -188,6 +197,7 @@ function App() {
                 setLatex(resp.data.prompt_latex)
                 setSeed(resp.data.seed)
                 setChoices(resp.data.choices ?? null)
+                setDiagram(resp.data.diagram ?? null)
             }
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
@@ -390,6 +400,10 @@ function App() {
                     </div>
                 )}
 
+                {diagram && diagram.type === 'right_triangle' && (
+                    <RightTriangle a={diagram.a || 0} b={diagram.b || 0} c={diagram.c || 0} labels={diagram.labels || {}} />
+                )}
+
                 <div className="flex flex-wrap items-center gap-2">
                     {choices && choices.length > 0 ? (
                         <div className="flex flex-col gap-2 w-full">
@@ -563,3 +577,24 @@ function App() {
 }
 
 export default App
+
+type RightTriangleProps = { a: number; b: number; c: number; labels: Record<string, string> }
+function RightTriangle({ a, b, c, labels }: RightTriangleProps) {
+    const maxSide = Math.max(a, b)
+    const scale = maxSide > 0 ? 180 / maxSide : 1
+    const ax = a * scale
+    const by = b * scale
+    const width = Math.max(ax + 20, 220)
+    const height = Math.max(by + 20, 180)
+    return (
+        <div className="mb-3">
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
+                <polygon points={`10,${by+10} ${ax+10},${by+10} 10,10`} fill="#eef2ff" stroke="#1f2937" />
+                <text x={(ax/2)+10} y={(by+10)+14} textAnchor="middle" fontSize="12" fill="#374151">{labels.a ?? 'a'}</text>
+                <text x={8} y={(by/2)+10} textAnchor="end" fontSize="12" fill="#374151">{labels.b ?? 'b'}</text>
+                <text x={(ax/2)+2} y={(by/2)} fontSize="12" fill="#374151">{labels.c ?? 'c'}</text>
+                <polyline points={`10,${by+10} 22,${by+10} 22,${by-2+10}`} fill="none" stroke="#1f2937" />
+            </svg>
+        </div>
+    )
+}
