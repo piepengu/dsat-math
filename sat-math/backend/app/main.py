@@ -32,9 +32,9 @@ from .generators import (
 )
 from .models import Attempt
 from .schemas import (
-    AttemptOut,
     AttemptAIRequest,
     AttemptAIResponse,
+    AttemptOut,
     EstimateRequest,
     EstimateResponse,
     GenerateAIRequest,
@@ -103,6 +103,7 @@ def generate_item(req: GenerateRequest):
         seed=item.seed,
         prompt_latex=item.prompt_latex,
         choices=getattr(item, "choices", None),
+        diagram=getattr(item, "diagram", None),
     )
 
 

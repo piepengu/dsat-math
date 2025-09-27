@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, conint
 
@@ -16,6 +16,15 @@ class GenerateResponse(BaseModel):
     seed: int
     prompt_latex: str
     choices: Optional[List[str]] = None
+    diagram: Optional["DiagramSpec"] = None
+
+
+class DiagramSpec(BaseModel):
+    type: str  # e.g., "right_triangle"
+    a: Optional[int] = None
+    b: Optional[int] = None
+    c: Optional[int] = None
+    labels: Optional[Dict[str, str]] = None
 
 
 class GradeRequest(BaseModel):

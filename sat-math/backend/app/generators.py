@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import sympy as sp
 
@@ -18,6 +18,8 @@ class GeneratedItem:
     choices: Optional[List[str]] = None
     correct_index: Optional[int] = None
     why_incorrect: Optional[List[str]] = None
+    # Optional diagram spec
+    diagram: Optional[Dict[str, object]] = None
 
 
 def generate_linear_equation(seed: int) -> GeneratedItem:
@@ -46,6 +48,7 @@ def generate_linear_equation(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(solution),
         explanation_steps=steps,
+        diagram=None,
     )
 
 
@@ -93,14 +96,22 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
     for x in options:
         if x == sol_val:
             why_map.append(
-                "Correct — solves the equation after proper distribution/isolation."
+                "Correct — solves the equation after proper distribution/"
+                "isolation."
             )
         elif x == d2:
-            why_map.append("Sign error when moving terms across the equals sign.")
+            why_map.append(
+                "Sign error when moving terms across the equals sign."
+            )
         elif x == d1:
-            why_map.append("Arithmetic slip (off-by-one/two) during add/subtract step.")
+            why_map.append(
+                "Arithmetic slip (off-by-one/two) during add/"
+                "subtract step."
+            )
         else:
-            why_map.append("Stopped early or misapplied division step.")
+            why_map.append(
+                "Stopped early or misapplied division step."
+            )
 
     return GeneratedItem(
         domain=base.domain,
@@ -113,6 +124,7 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
         choices=choices,
         correct_index=correct_index,
         why_incorrect=why_map,
+        diagram=None,
     )
 
 
@@ -125,10 +137,20 @@ def grade_linear_equation_mc(
         or selected_index < 0
         or selected_index >= len(item.choices or [])
     ):
-        return False, item.solution_str, item.explanation_steps, "No choice selected"
+        return (
+            False,
+            item.solution_str,
+            item.explanation_steps,
+            "No choice selected",
+        )
     correct = selected_index == (item.correct_index or -1)
     why_selected = (item.why_incorrect or [""])[selected_index]
-    return bool(correct), item.solution_str, item.explanation_steps, why_selected
+    return (
+        bool(correct),
+        item.solution_str,
+        item.explanation_steps,
+        why_selected,
+    )
 
 
 def generate_two_step_equation(seed: int) -> GeneratedItem:
@@ -152,6 +174,7 @@ def generate_two_step_equation(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(int(root)),
         explanation_steps=steps,
+        diagram=None,
     )
 
 
@@ -196,6 +219,7 @@ def generate_proportion(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(x_val),
         explanation_steps=steps,
+        diagram=None,
     )
 
 
@@ -249,6 +273,7 @@ def generate_linear_system_2x2(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=f"{x0},{y0}",
         explanation_steps=steps,
+        diagram=None,
     )
 
 
@@ -304,6 +329,7 @@ def generate_quadratic_roots(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=sol,
         explanation_steps=steps,
+        diagram=None,
     )
 
 
@@ -376,7 +402,10 @@ def generate_pythagorean_hypotenuse(seed: int) -> GeneratedItem:
     a, b, c = rng.choice(_TRIPLES)
     k = rng.randint(1, 5)
     leg1, leg2, hyp = a * k, b * k, c * k
-    prompt_latex = f"\\text{{In a right triangle with legs {leg1} and {leg2}, find the hypotenuse.}}"
+    prompt_latex = (
+        "\\text{In a right triangle with legs "
+        f"{leg1} and {leg2}, find the hypotenuse.}}"
+    )
     steps: List[str] = [
         ("Use a^2 + b^2 = c^2: " f"{leg1}^2 + {leg2}^2 = c^2"),
         ("Compute: " f"{leg1**2} + {leg2**2} = {leg1**2 + leg2**2} = c^2"),
@@ -390,6 +419,13 @@ def generate_pythagorean_hypotenuse(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(hyp),
         explanation_steps=steps,
+        diagram={
+            "type": "right_triangle",
+            "a": leg1,
+            "b": leg2,
+            "c": hyp,
+            "labels": {"a": str(leg1), "b": str(leg2), "c": "?"},
+        },
     )
 
 
@@ -412,10 +448,16 @@ def generate_pythagorean_leg(seed: int) -> GeneratedItem:
     leg_known = a * k
     hyp = c * k
     other_leg = b * k
-    prompt_latex = f"\\text{{In a right triangle, the hypotenuse is {hyp} and one leg is {leg_known}. Find the other leg.}}"
+    prompt_latex = (
+        "\\text{In a right triangle, the hypotenuse is "
+        f"{hyp} and one leg is {leg_known}. Find the other leg.}}"
+    )
     steps: List[str] = [
         ("Use c^2 - a^2 = b^2: " f"{hyp}^2 - {leg_known}^2 = b^2"),
-        ("Compute: " f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2"),
+        (
+            "Compute: "
+            f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2"
+        ),
         f"Take square root: b = {other_leg}",
     ]
     return GeneratedItem(
@@ -426,6 +468,13 @@ def generate_pythagorean_leg(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(other_leg),
         explanation_steps=steps,
+        diagram={
+            "type": "right_triangle",
+            "a": leg_known,
+            "b": other_leg,
+            "c": hyp,
+            "labels": {"a": str(leg_known), "b": "?", "c": str(hyp)},
+        },
     )
 
 
