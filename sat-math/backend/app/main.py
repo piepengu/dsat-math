@@ -338,6 +338,7 @@ def generate_ai(req: GenerateAIRequest):
         correct_index = int(data.get("correct_index", -1))
         steps = data.get("explanation_steps") or []
         prompt_latex = data.get("prompt_latex") or ""
+        diagram = data.get("diagram") or None
 
         # Server-side validation
         def _ok_choice(s: str) -> bool:
@@ -365,6 +366,27 @@ def generate_ai(req: GenerateAIRequest):
         if not (isinstance(steps, list) and 1 <= len(steps) <= 10):
             valid = False
 
+        # Optional diagram validation (currently supports right_triangle)
+        diagram_out = None
+        if (
+            isinstance(diagram, dict)
+            and diagram.get("type") == "right_triangle"
+        ):
+            try:
+                da = int(diagram.get("a", 0))
+                db = int(diagram.get("b", 0))
+                dc = int(diagram.get("c", 0))
+                if da > 0 and db > 0 and dc > 0:
+                    diagram_out = {
+                        "type": "right_triangle",
+                        "a": da,
+                        "b": db,
+                        "c": dc,
+                        "labels": diagram.get("labels") or {},
+                    }
+            except Exception:
+                diagram_out = None
+
         if not valid:
             return _fallback_mc()
 
@@ -374,6 +396,7 @@ def generate_ai(req: GenerateAIRequest):
             choices=[str(c) for c in choices],
             correct_index=int(correct_index),
             explanation_steps=[str(s) for s in steps],
+            diagram=diagram_out,
         )
     except Exception:
         # Any unexpected error — safe fallback

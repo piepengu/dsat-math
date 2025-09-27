@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 
 import sympy as sp
 
@@ -96,22 +96,16 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
     for x in options:
         if x == sol_val:
             why_map.append(
-                "Correct — solves the equation after proper distribution/"
-                "isolation."
+                "Correct — solves the equation after proper distribution/" "isolation."
             )
         elif x == d2:
-            why_map.append(
-                "Sign error when moving terms across the equals sign."
-            )
+            why_map.append("Sign error when moving terms across the equals sign.")
         elif x == d1:
             why_map.append(
-                "Arithmetic slip (off-by-one/two) during add/"
-                "subtract step."
+                "Arithmetic slip (off-by-one/two) during add/" "subtract step."
             )
         else:
-            why_map.append(
-                "Stopped early or misapplied division step."
-            )
+            why_map.append("Stopped early or misapplied division step.")
 
     return GeneratedItem(
         domain=base.domain,
@@ -454,10 +448,7 @@ def generate_pythagorean_leg(seed: int) -> GeneratedItem:
     )
     steps: List[str] = [
         ("Use c^2 - a^2 = b^2: " f"{hyp}^2 - {leg_known}^2 = b^2"),
-        (
-            "Compute: "
-            f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2"
-        ),
+        ("Compute: " f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2"),
         f"Take square root: b = {other_leg}",
     ]
     return GeneratedItem(

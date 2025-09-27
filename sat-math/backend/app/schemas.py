@@ -76,6 +76,7 @@ class GenerateAIResponse(BaseModel):
     choices: List[str]
     correct_index: int
     explanation_steps: List[str]
+    diagram: Optional[DiagramSpec] = None
 
 
 class AttemptAIRequest(BaseModel):

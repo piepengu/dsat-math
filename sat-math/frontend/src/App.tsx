@@ -45,6 +45,13 @@ type GenerateAIResponse = {
     choices: string[]
     correct_index: number
     explanation_steps: string[]
+    diagram?: {
+        type: string
+        a?: number
+        b?: number
+        c?: number
+        labels?: Record<string, string>
+    } | null
 }
 
 function App() {
@@ -188,7 +195,7 @@ function App() {
                 setChoices(resp.data.choices)
                 setAiCorrectIndex(resp.data.correct_index)
                 setAiExplanation(resp.data.explanation_steps)
-                setDiagram(null)
+                setDiagram(resp.data.diagram ?? null)
             } else {
                 const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
                     domain,
@@ -579,7 +586,7 @@ function App() {
 export default App
 
 type RightTriangleProps = { a: number; b: number; c: number; labels: Record<string, string> }
-function RightTriangle({ a, b, c, labels }: RightTriangleProps) {
+function RightTriangle({ a, b, labels }: RightTriangleProps) {
     const maxSide = Math.max(a, b)
     const scale = maxSide > 0 ? 180 / maxSide : 1
     const ax = a * scale
@@ -589,11 +596,11 @@ function RightTriangle({ a, b, c, labels }: RightTriangleProps) {
     return (
         <div className="mb-3">
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
-                <polygon points={`10,${by+10} ${ax+10},${by+10} 10,10`} fill="#eef2ff" stroke="#1f2937" />
-                <text x={(ax/2)+10} y={(by+10)+14} textAnchor="middle" fontSize="12" fill="#374151">{labels.a ?? 'a'}</text>
-                <text x={8} y={(by/2)+10} textAnchor="end" fontSize="12" fill="#374151">{labels.b ?? 'b'}</text>
-                <text x={(ax/2)+2} y={(by/2)} fontSize="12" fill="#374151">{labels.c ?? 'c'}</text>
-                <polyline points={`10,${by+10} 22,${by+10} 22,${by-2+10}`} fill="none" stroke="#1f2937" />
+                <polygon points={`10,${by + 10} ${ax + 10},${by + 10} 10,10`} fill="#eef2ff" stroke="#1f2937" />
+                <text x={(ax / 2) + 10} y={(by + 10) + 14} textAnchor="middle" fontSize="12" fill="#374151">{labels.a ?? 'a'}</text>
+                <text x={8} y={(by / 2) + 10} textAnchor="end" fontSize="12" fill="#374151">{labels.b ?? 'b'}</text>
+                <text x={(ax / 2) + 2} y={(by / 2)} fontSize="12" fill="#374151">{labels.c ?? 'c'}</text>
+                <polyline points={`10,${by + 10} 22,${by + 10} 22,${by - 2 + 10}`} fill="none" stroke="#1f2937" />
             </svg>
         </div>
     )
