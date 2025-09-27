@@ -9,6 +9,9 @@ Updates (2025-09-22)
   - Implemented AI attempt logging: after client-side grading, the app POSTs to `/attempt_ai` so stats include AI items.
   - Improved LaTeX normalization for environments (e.g., `cases`, `aligned`) so multi-line prompts render correctly.
   - UX polish: the “Hide explanation” toggle now hides both the correct answer and the step list.
+  - Diagram rendering: added right-triangle SVG; labels with contrast; dynamic scaling.
+  - Renderer fixes: treat pure `\text{...}` as plain text; support `\[ ... \]` block splitting.
+  - UI: filter skill dropdown based on selected domain; reset skill on domain change.
 - Deployment
   - Moved frontend hosting to GitHub Pages.
     - Published the built site to `docs/` on `master` and added a GitHub Actions Pages workflow to deploy automatically.
@@ -17,6 +20,7 @@ Updates (2025-09-22)
 - Verification
   - “Use AI” → Submit → “My Stats” increases attempts for the selected skill.
   - API checks: `/attempts?user_id=...` and `/stats` reflect AI attempts.
+  - Geometry (AI/template) now shows diagrams; MC shows four choices.
 
 What we accomplished today
 - Repo cleanup & structure
@@ -32,6 +36,10 @@ What we accomplished today
   - Persistence: SQLite via SQLAlchemy; Attempt model; stats endpoint (per-skill accuracy).
   - CORS: uses FRONTEND_ORIGIN env; health verified on Render.
   - Python 3.7 compatibility fixes (Optional/Lists, f-string escaping). 
+  - AI fallback improvements:
+    - Geometry: Pythagorean items return valid 4-choice MC with diagram when AI fails.
+    - Algebra 2x2: fallback builds coordinate options from template solution.
+  - Fixed LaTeX for 2x2 systems (proper line breaks in `cases`).
 
 - Frontend (sat-math/frontend)
   - React + Vite + TypeScript scaffolded and wired to backend.
@@ -84,7 +92,7 @@ Next Sprint Plan (ordered: easiest → harder)
 5) Server-side validation/fallbacks (medium)
    - Sanity-check AI answers (numeric/symbolic) and fall back to templates on failure.
 
-6) Diagram support (template-based) (medium)ag
+6) Diagram support (template-based) (medium) (IN PROGRESS)
 
 7) Diagram support (AI-assisted) (medium-hard)
    - /generate_ai returns prompt_latex + structured diagram spec (shapes/points/labels); render via SVG; validate spec.
