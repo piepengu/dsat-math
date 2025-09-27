@@ -4,7 +4,7 @@ import random
 import re
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -268,17 +268,25 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
 
 @app.post("/generate_ai", response_model=GenerateAIResponse)
 def generate_ai(req: GenerateAIRequest):
-    if not _HAS_GENAI:
-        raise HTTPException(
-            status_code=500,
-            detail="AI not available on server",
+    def _fallback_mc() -> GenerateAIResponse:
+        # Fallback to a safe template-based MC item
+        seed = random.randint(1, 10_000_000)
+        item = generate_linear_equation_mc(seed)
+        return GenerateAIResponse(
+            prompt_latex=item.prompt_latex,
+            choices=item.choices or ["1", "2", "3", "4"],
+            correct_index=int(item.correct_index or 0),
+            explanation_steps=item.explanation_steps,
         )
+
+    # If AI is unavailable, immediately return fallback
+    if not _HAS_GENAI:
+        return _fallback_mc()
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise HTTPException(
-            status_code=500,
-            detail="GEMINI_API_KEY not configured",
-        )
+        return _fallback_mc()
+
     genai.configure(api_key=api_key)
 
     prompt = (
@@ -302,13 +310,17 @@ def generate_ai(req: GenerateAIRequest):
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
+
+        # First attempt to parse JSON
         try:
             data = json.loads(text)
         except json.JSONDecodeError as je:
             if "Invalid \\escape" in str(je):
-                # Attempt to escape backslashes inside prompt_latex value only
+                # Escape backslashes inside prompt_latex only, then reparse
                 m = re.search(
-                    r'("prompt_latex"\s*:\s*")(.*?)(")', text, flags=re.DOTALL
+                    r'("prompt_latex"\s*:\s*")(.*?)(")',
+                    text,
+                    flags=re.DOTALL,
                 )
                 if m:
                     start_idx, end_idx = m.start(2), m.end(2)
@@ -317,26 +329,51 @@ def generate_ai(req: GenerateAIRequest):
                     text = text[:start_idx] + val_fixed + text[end_idx:]
                 data = json.loads(text)
             else:
-                raise
+                # Unrecoverable JSON — fallback
+                return _fallback_mc()
+
+        # Extract fields
         choices = data.get("choices") or []
         correct_index = int(data.get("correct_index", -1))
         steps = data.get("explanation_steps") or []
         prompt_latex = data.get("prompt_latex") or ""
+
+        # Server-side validation
+        def _ok_choice(s: str) -> bool:
+            return isinstance(s, str) and 0 < len(s) <= 120
+
+        valid = True
+        if not (isinstance(choices, list) and len(choices) == 4):
+            valid = False
+        if not all(_ok_choice(str(c)) for c in choices):
+            valid = False
+        if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
+            valid = False
         if not (
-            isinstance(choices, list)
-            and len(choices) == 4
-            and 0 <= correct_index < 4
-            and prompt_latex
+            isinstance(prompt_latex, str)
+            and 1 <= len(prompt_latex) <= 4000
         ):
-            raise ValueError("Invalid AI response shape")
+            valid = False
+        # Disallow problematic commands that break KaTeX
+        if re.search(
+            r"\\label\{|\\begin\{document\}|\\end\{document\}",
+            prompt_latex,
+        ):
+            valid = False
+        # Explanation steps size cap
+        if not (isinstance(steps, list) and 1 <= len(steps) <= 10):
+            valid = False
+
+        if not valid:
+            return _fallback_mc()
+
+        # Return validated AI item
         return GenerateAIResponse(
-            prompt_latex=prompt_latex,
-            choices=list(map(str, choices)),
-            correct_index=correct_index,
+            prompt_latex=str(prompt_latex),
+            choices=[str(c) for c in choices],
+            correct_index=int(correct_index),
             explanation_steps=[str(s) for s in steps],
         )
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI generation failed: {e}",
-        )
+    except Exception:
+        # Any unexpected error — safe fallback
+        return _fallback_mc()
