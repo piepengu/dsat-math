@@ -249,9 +249,9 @@ def generate_linear_system_2x2(seed: int) -> GeneratedItem:
     e = a * x0 + b * y0
     f = c * x0 + d * y0
     prompt_latex = (
-        "Solve the system for (x, y):\\n\\[\n"
-        f"\\begin{{cases}} {a}x {b:+}y = {e} \\"
-        f" {c}x {d:+}y = {f} \\end{{cases}}\n"
+        "Solve the system for (x, y):\\n\\["
+        f"\\begin{{cases}} {a}x {b:+}y = {e} \\\\"
+        f" {c}x {d:+}y = {f} \\end{{cases}}"
         "\\]"
     )
     steps: List[str] = [
