@@ -421,6 +421,19 @@ function App() {
                                 const norm = normalizeLatex(latex)
                                 const plain = maybeRenderPlainText(norm)
                                 if (plain) return plain
+                                // Handle block math delimiters \[ ... \]
+                                if (/\\\[[\s\S]*?\\\]/.test(norm)) {
+                                    const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
+                                    return parts.map((seg, i) =>
+                                        seg.startsWith('\\[') && seg.endsWith('\\]') ? (
+                                            <div key={i} className="my-2">
+                                                <BlockMath math={seg.slice(2, -2)} />
+                                            </div>
+                                        ) : (
+                                            <span key={i}>{renderInlineMath(seg)}</span>
+                                        )
+                                    )
+                                }
                                 if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
                                 if (norm.includes('$$')) {
                                     return norm.split('$$').map((seg, i) =>
