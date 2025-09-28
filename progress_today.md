@@ -107,3 +107,14 @@ Next Sprint Plan (ordered: easiest → harder)
    - Optional user accounts; keep stats across devices; migrate to Postgres.
 
 Note: We will continue with step 2 next (difficulty/topic controls).
+
+End of day notes (2025-09-27)
+- Verified “Avg time” column appears in My Stats; headings set to neutral black.
+- Fixed CORS configuration and added auto‑migration for analytics columns (`source`, `time_ms`, `created_at`).
+- Surfaced errors in the debug banner to aid troubleshooting (e.g., Network Error details).
+- Improved LaTeX rendering for both AI and non‑AI prompts: supports `\[ ... \]` blocks and treats pure `\text{...}` as plain text.
+- Diagram labels (right triangle) now high‑contrast and positioned clearly.
+- UI: skills dropdown filters by domain and resets to a valid skill on domain change.
+
+Planned for next session
+- Record `time_ms` for AI submissions via `/attempt_ai` so Avg time includes AI items.
