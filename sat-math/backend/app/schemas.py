@@ -34,6 +34,8 @@ class GradeRequest(BaseModel):
     user_answer: str
     user_id: Optional[str] = None
     selected_choice_index: Optional[int] = None
+    time_ms: Optional[int] = None
+    source: Optional[str] = None  # 'ai' | 'template'
 
 
 class GradeResponse(BaseModel):
@@ -52,6 +54,8 @@ class AttemptOut(BaseModel):
     seed: int
     correct: bool
     correct_answer: str
+    source: Optional[str] = None
+    time_ms: Optional[int] = None
 
 
 class EstimateRequest(BaseModel):

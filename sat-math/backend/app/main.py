@@ -144,6 +144,8 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             seed=req.seed,
             correct=bool(correct),
             correct_answer=str(sol),
+            source="template",
+            time_ms=req.time_ms if hasattr(req, "time_ms") else None,
         )
         db.add(db_attempt)
         db.commit()
@@ -179,6 +181,8 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         seed=req.seed,
         correct=bool(correct),
         correct_answer=str(sol),
+        source="template",
+        time_ms=req.time_ms if hasattr(req, "time_ms") else None,
     )
     db.add(db_attempt)
     db.commit()
@@ -230,17 +234,23 @@ def stats(
             Attempt.skill,
             func.count(Attempt.id),
             func.sum(func.cast(Attempt.correct, Integer)),
+            func.avg(Attempt.time_ms),
         )
         .filter(Attempt.user_id == user_id)
         .group_by(Attempt.skill)
         .all()
     )
     out = {}
-    for skill, n, n_correct in rows:
+    for skill, n, n_correct, avg_time in rows:
         total = int(n or 0)
         correct = int(n_correct or 0)
         acc = (correct / total) if total else 0.0
-        out[skill] = {"attempts": total, "correct": correct, "accuracy": acc}
+        out[skill] = {
+            "attempts": total,
+            "correct": correct,
+            "accuracy": acc,
+            "avg_time_s": float((avg_time or 0) / 1000.0),
+        }
     return out
 
 
@@ -261,6 +271,8 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
         seed=req.seed if (req.seed is not None) else -1,
         correct=correct,
         correct_answer=str(req.correct_answer or ""),
+        source="ai",
+        time_ms=None,
     )
     db.add(db_attempt)
     db.commit()

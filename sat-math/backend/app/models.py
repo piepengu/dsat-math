@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, func
 
 from .db import Base
 
@@ -15,3 +15,7 @@ class Attempt(Base):
     seed = Column(Integer, nullable=False)
     correct = Column(Boolean, nullable=False)
     correct_answer = Column(String, nullable=False)
+    # Analytics
+    source = Column(String, nullable=True)  # 'ai' | 'template'
+    time_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=True)

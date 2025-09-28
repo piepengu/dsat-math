@@ -78,6 +78,7 @@ function App() {
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+    const [startTs, setStartTs] = useState<number | null>(null)
 
     // Domain → Skill options shown in the second dropdown
     const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
@@ -237,6 +238,7 @@ function App() {
                 setChoices(resp.data.choices ?? null)
                 setDiagram(resp.data.diagram ?? null)
             }
+            setStartTs(Date.now())
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
             setLastError(msg)
@@ -288,6 +290,8 @@ function App() {
                 } else {
                     payload.user_answer = answer
                 }
+                if (startTs) payload.time_ms = Math.max(0, Date.now() - startTs)
+                payload.source = useAI ? 'ai' : 'template'
                 const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
                 setResult(resp.data)
                 if (inSession) setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
@@ -612,6 +616,7 @@ function App() {
                                     <th className="text-right p-2">Attempts</th>
                                     <th className="text-right p-2">Correct</th>
                                     <th className="text-right p-2">Accuracy</th>
+                                    <th className="text-right p-2">Avg time</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -621,6 +626,7 @@ function App() {
                                         <td className="text-right p-2">{v.attempts}</td>
                                         <td className="text-right p-2">{v.correct}</td>
                                         <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
+                                        <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
