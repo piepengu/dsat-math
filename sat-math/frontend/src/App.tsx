@@ -641,11 +641,11 @@ function App() {
                         <table className="w-full mt-2 border-collapse">
                             <thead>
                                 <tr className="border-b">
-                                    <th className="text-left p-2 text-red-700">Skill</th>
-                                    <th className="text-right p-2 text-red-700">Attempts</th>
-                                    <th className="text-right p-2 text-red-700">Correct</th>
-                                    <th className="text-right p-2 text-red-700">Accuracy</th>
-                                    <th className="text-right p-2 text-green-700">Avg time</th>
+                                    <th className="text-left p-2 text-gray-900">Skill</th>
+                                    <th className="text-right p-2 text-gray-900">Attempts</th>
+                                    <th className="text-right p-2 text-gray-900">Correct</th>
+                                    <th className="text-right p-2 text-gray-900">Accuracy</th>
+                                    <th className="text-right p-2 text-gray-900">Avg time</th>
                                 </tr>
                             </thead>
                             <tbody>
