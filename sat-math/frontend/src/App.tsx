@@ -601,6 +601,9 @@ function App() {
                                     { params: { user_id: userId } }
                                 )
                                 setStats(resp.data)
+                            } catch (e: any) {
+                                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                setLastError(msg)
                             } finally {
                                 setLoading(false)
                             }
