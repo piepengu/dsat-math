@@ -54,16 +54,40 @@ except Exception:
 
 app = FastAPI()
 
+# CORS: use explicit origins to keep headers valid in browsers
+_env_origins = os.getenv("FRONTEND_ORIGIN", "").strip()
+_origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
+if not _origins:
+    _origins = [
+        "https://piepengu.github.io",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
 )
 
 
 Base.metadata.create_all(bind=engine)
+
+# Lightweight migration for new analytics columns on SQLite
+try:
+    with engine.connect() as _conn:
+        rows = _conn.exec_driver_sql("PRAGMA table_info(attempts)").fetchall()
+        existing = {r[1] for r in rows}
+        if "source" not in existing:
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN source TEXT")
+        if "time_ms" not in existing:
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN time_ms INTEGER")
+        if "created_at" not in existing:
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN created_at DATETIME")
+except Exception:
+    pass
 
 
 @app.get("/health")
@@ -286,10 +310,7 @@ def generate_ai(req: GenerateAIRequest):
         # when possible
         seed = random.randint(1, 10_000_000)
         try:
-            if (
-                req.domain == "Geometry"
-                and req.skill == "pythagorean_hypotenuse"
-            ):
+            if req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
                 item = generate_pythagorean_hypotenuse(seed)
                 # Convert to a well-formed MC with 4 choices
                 sol = str(item.solution_str)
@@ -421,10 +442,7 @@ def generate_ai(req: GenerateAIRequest):
             valid = False
         if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
             valid = False
-        if not (
-            isinstance(prompt_latex, str)
-            and 1 <= len(prompt_latex) <= 4000
-        ):
+        if not (isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000):
             valid = False
         # Disallow problematic commands that break KaTeX
         if re.search(
@@ -438,10 +456,7 @@ def generate_ai(req: GenerateAIRequest):
 
         # Optional diagram validation (currently supports right_triangle)
         diagram_out = None
-        if (
-            isinstance(diagram, dict)
-            and diagram.get("type") == "right_triangle"
-        ):
+        if isinstance(diagram, dict) and diagram.get("type") == "right_triangle":
             try:
                 da = int(diagram.get("a", 0))
                 db = int(diagram.get("b", 0))

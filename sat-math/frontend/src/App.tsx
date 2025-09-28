@@ -678,7 +678,7 @@ function RightTriangle({ a, b, labels }: RightTriangleProps) {
                 <text x={midHX - 6} y={midHY - 6} fontSize="14" fill="#111827" style={labelStyle}>
                     {labels.c ?? 'c'}
                 </text>
-                <polyline points={`${leftX},${baseY} ${leftX+12},${baseY} ${leftX+12},${baseY-12}`} fill="none" stroke="#111827" />
+                <polyline points={`${leftX},${baseY} ${leftX + 12},${baseY} ${leftX + 12},${baseY - 12}`} fill="none" stroke="#111827" />
             </svg>
         </div>
     )
