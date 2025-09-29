@@ -1,6 +1,6 @@
 ﻿DSAT Math App - Progress Summary (date: 2025-09-19)
 
-Updates (2025-09-27)
+Updates (2025-09-28)
 - Backend
   - Added POST `/attempt_ai` to persist AI-generated MC attempts (logs `user_id`, domain/skill, selection, correctness).
   - Hardened Gemini JSON parsing; clarified escaping in AI prompt; lint cleanups.
@@ -108,7 +108,7 @@ Next Sprint Plan (ordered: easiest → harder)
 
 Note: We will continue with step 2 next (difficulty/topic controls).
 
-End of day notes (2025-09-27)
+End of day notes (2025-09-28)
 - Verified “Avg time” column appears in My Stats; headings set to neutral black.
 - Fixed CORS configuration and added auto‑migration for analytics columns (`source`, `time_ms`, `created_at`).
 - Surfaced errors in the debug banner to aid troubleshooting (e.g., Network Error details).
