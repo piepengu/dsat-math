@@ -118,3 +118,34 @@ End of day notes (2025-09-27)
 
 Planned for next session
 - Record `time_ms` for AI submissions via `/attempt_ai` so Avg time includes AI items.
+
+Comprehensive accomplishments to date
+- Backend (FastAPI + SQLite/SQLAlchemy)
+  - Endpoints: `/health`, `/generate`, `/grade`, `/attempts`, `/stats`, `/estimate`, `/attempt_ai`, `/generate_ai`.
+  - Models: `Attempt` with `user_id`, `domain`, `skill`, `seed`, `correct`, `correct_answer`, analytics fields `source`, `time_ms`, `created_at`.
+  - Auto‑migration: safely adds analytics columns on startup if missing.
+  - Generators/graders: linear equation (SPR/MC with distractors + feedback), two‑step equation, proportion, linear system 2×2, quadratic roots, exponential solve, Pythagorean hypotenuse/leg.
+  - AI integration (Gemini): strict JSON, LaTeX escaping, schema and content validation, robust fallbacks to templates (Geometry and 2×2), optional diagram pass‑through.
+  - CORS: explicit origins (GitHub Pages, localhost) for valid browser responses.
+
+- Frontend (React + Vite + TS + Tailwind)
+  - Core UI: domain + skill pickers (skill list filtered by domain), difficulty selector, AI toggle, session mode with progress bar, debug banner, improved button styles.
+  - Rendering: KaTeX with helpers for `\text{...}`, `\[ ... \]` blocks, environments (`cases`/`aligned`), and inline math; non‑AI and AI paths unified.
+  - MC UX: radio options with correct/wrong highlighting, “why wrong” text, explanation toggle; SPR input preserved.
+  - Diagrams: right‑triangle SVG with scaled sides, readable labels, right‑angle marker; shown for Pythagorean items (templates and AI when provided/fallback).
+  - Analytics: live time‑to‑answer timer under the prompt; requests send `time_ms` and `source`; My Stats table shows Attempts/Correct/Accuracy and Avg time per skill.
+
+- CI/CD + Deployments
+  - GitHub Actions: backend tests + frontend build on push/PR.
+  - Backend on Render with environment (`FRONTEND_ORIGIN`, `GEMINI_API_KEY`).
+  - Frontend on GitHub Pages (docs/ branch flow) with repeatable publish.
+
+- Stability & fixes
+  - Python 3.7 compatibility (typing, f‑strings), added SQLAlchemy, fixed Tailwind v4 PostCSS, added `react-katex` types, resolved Netlify issues, cleaned submodules, resolved CORS and JSON issues.
+
+Next up (options)
+- Per‑skill AI vs template breakdowns in My Stats (counts/accuracy/avg time for each source).
+- Trend charts (last 7/30 days) for accuracy and avg time per skill.
+- Diagram enhancements (angle markers, side ticks, labels toggle) and more geometry skills.
+- Simple AI rate limiting per user/session and a friendly quota banner.
+- Export attempts as CSV; “Reset my stats” control.
