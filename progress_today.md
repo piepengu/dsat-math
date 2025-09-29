@@ -149,3 +149,8 @@ Next up (options)
 - Diagram enhancements (angle markers, side ticks, labels toggle) and more geometry skills.
 - Simple AI rate limiting per user/session and a friendly quota banner.
 - Export attempts as CSV; “Reset my stats” control.
+
+Planned for tomorrow
+- Expand templates: more Geometry (area/perimeter, angles), Advanced (systems 3×3, rationals), PSD word problems.
+- Diagram upgrades: angle markers, side ticks, labels toggle; triangles with given angles/sides.
+- Robust AI guardrails: stronger schema + math validation; fallback to templates on any mismatch.
