@@ -296,7 +296,7 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
         correct=correct,
         correct_answer=str(req.correct_answer or ""),
         source="ai",
-        time_ms=None,
+        time_ms=(req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None),
     )
     db.add(db_attempt)
     db.commit()

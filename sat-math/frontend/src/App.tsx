@@ -273,6 +273,7 @@ function App() {
                         correct_index: aiCorrectIndex,
                         correct_answer: correctAnswer,
                         seed: -1,
+                        time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
                     })
                 } catch (e) {
                     // ignore logging errors

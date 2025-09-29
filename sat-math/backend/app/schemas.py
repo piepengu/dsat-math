@@ -91,6 +91,7 @@ class AttemptAIRequest(BaseModel):
     correct_index: int
     correct_answer: Optional[str] = None
     seed: Optional[int] = None
+    time_ms: Optional[int] = None
 
 
 class AttemptAIResponse(BaseModel):
