@@ -79,6 +79,7 @@ function App() {
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
     const [startTs, setStartTs] = useState<number | null>(null)
+    const [nowTs, setNowTs] = useState<number>(Date.now())
 
     // Domain → Skill options shown in the second dropdown
     const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
@@ -239,6 +240,7 @@ function App() {
                 setDiagram(resp.data.diagram ?? null)
             }
             setStartTs(Date.now())
+            setNowTs(Date.now())
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
             setLastError(msg)
@@ -246,6 +248,15 @@ function App() {
             setLoading(false)
         }
     }
+
+    // Live timer tick while a question is active
+    useEffect(() => {
+        const active = startTs != null && result == null
+        if (!active) return
+        const id = setInterval(() => setNowTs(Date.now()), 250)
+        return () => clearInterval(id)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startTs, result])
 
     const submit = async () => {
         if (seed == null) return
@@ -485,6 +496,11 @@ function App() {
                                 return renderWithEnvironments(norm)
                             })()}
                     </div>
+                )}
+
+                {/* live timer */}
+                {startTs != null && result == null && (
+                    <div className="text-sm text-gray-600 mb-2">Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s</div>
                 )}
 
                 {diagram && diagram.type === 'right_triangle' && (
