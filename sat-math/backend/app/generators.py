@@ -96,13 +96,17 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
     for x in options:
         if x == sol_val:
             why_map.append(
-                "Correct — solves the equation after proper distribution/" "isolation."
+                "Correct — solves the equation after proper distribution/"
+                "isolation."
             )
         elif x == d2:
-            why_map.append("Sign error when moving terms across the equals sign.")
+            why_map.append(
+                "Sign error when moving terms across the equals sign."
+            )
         elif x == d1:
             why_map.append(
-                "Arithmetic slip (off-by-one/two) during add/" "subtract step."
+                "Arithmetic slip (off-by-one/two) during add/"
+                "subtract step."
             )
         else:
             why_map.append("Stopped early or misapplied division step.")
@@ -398,11 +402,14 @@ def generate_pythagorean_hypotenuse(seed: int) -> GeneratedItem:
     leg1, leg2, hyp = a * k, b * k, c * k
     prompt_latex = (
         "\\text{In a right triangle with legs "
-        f"{leg1} and {leg2}, find the hypotenuse.}}"
+        + str(leg1)
+        + " and "
+        + str(leg2)
+        + ", find the hypotenuse.}"
     )
     steps: List[str] = [
-        ("Use a^2 + b^2 = c^2: " f"{leg1}^2 + {leg2}^2 = c^2"),
-        ("Compute: " f"{leg1**2} + {leg2**2} = {leg1**2 + leg2**2} = c^2"),
+        ("Use a^2 + b^2 = c^2: " + f"{leg1}^2 + {leg2}^2 = c^2"),
+        ("Compute: " + f"{leg1**2} + {leg2**2} = {leg1**2 + leg2**2} = c^2"),
         f"Take square root: c = {hyp}",
     ]
     return GeneratedItem(
@@ -435,45 +442,275 @@ def grade_pythagorean_hypotenuse(
     return bool(is_equal), item.solution_str, item.explanation_steps
 
 
-def generate_pythagorean_leg(seed: int) -> GeneratedItem:
+# -------------- New Templates: Geometry Areas / Angles --------------
+
+def generate_rectangle_area(seed: int) -> GeneratedItem:
     rng = random.Random(seed)
-    a, b, c = rng.choice(_TRIPLES)
-    k = rng.randint(1, 5)
-    leg_known = a * k
-    hyp = c * k
-    other_leg = b * k
+    w = rng.randint(3, 20)
+    h = rng.randint(3, 20)
+    area = w * h
     prompt_latex = (
-        "\\text{In a right triangle, the hypotenuse is "
-        f"{hyp} and one leg is {leg_known}. Find the other leg.}}"
+        "\\text{A rectangle has width }"
+        + str(w)
+        + " \\text{ and height } "
+        + str(h)
+        + ". \\text{Find its area.}"
     )
-    steps: List[str] = [
-        ("Use c^2 - a^2 = b^2: " f"{hyp}^2 - {leg_known}^2 = b^2"),
-        ("Compute: " f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2"),
-        f"Take square root: b = {other_leg}",
+    steps = [
+        "Use area = width × height: " + f"A = {w}·{h}",
+        "Compute: " + "A = " + str(area),
     ]
     return GeneratedItem(
         domain="Geometry",
-        skill="pythagorean_leg",
+        skill="rectangle_area",
         format="SPR",
         seed=seed,
         prompt_latex=prompt_latex,
-        solution_str=str(other_leg),
+        solution_str=str(area),
         explanation_steps=steps,
-        diagram={
-            "type": "right_triangle",
-            "a": leg_known,
-            "b": other_leg,
-            "c": hyp,
-            "labels": {"a": str(leg_known), "b": "?", "c": str(hyp)},
-        },
     )
 
 
-def grade_pythagorean_leg(
+def grade_rectangle_area(
     seed: int,
     user_answer: str,
 ) -> Tuple[bool, str, List[str]]:
-    item = generate_pythagorean_leg(seed)
+    item = generate_rectangle_area(seed)
+    try:
+        is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
+def generate_rectangle_perimeter(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    w = rng.randint(3, 20)
+    h = rng.randint(3, 20)
+    perim = 2 * (w + h)
+    prompt_latex = (
+        "\\text{A rectangle has width }"
+        + str(w)
+        + " \\text{ and height } "
+        + str(h)
+        + ". \\text{Find its perimeter.}"
+    )
+    steps = [
+        "Perimeter P = 2(w + h) = " + f"2({w} + {h})",
+        "Compute: " + "P = " + str(perim),
+    ]
+    return GeneratedItem(
+        domain="Geometry",
+        skill="rectangle_perimeter",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=str(perim),
+        explanation_steps=steps,
+    )
+
+
+def grade_rectangle_perimeter(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_rectangle_perimeter(seed)
+    try:
+        is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
+def generate_triangle_interior_angle(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    a = rng.randint(30, 100)
+    b = rng.randint(20, 80)
+    # Ensure sum < 180
+    if a + b >= 170:
+        b = 160 - a
+    c = 180 - a - b
+    prompt_latex = (
+        "\\text{In triangle ABC, }\\angle A = "
+        + f"{a}^\\circ "
+        + "\\text{ and } \\angle B = "
+        + f"{b}^\\circ."
+        + " \\text{Find }\\angle C."
+    )
+    steps = [
+        "Sum of interior angles: A + B + C = 180^\\circ",
+        "So C = " + f"180 - {a} - {b} = {c}^\\circ",
+    ]
+    return GeneratedItem(
+        domain="Geometry",
+        skill="triangle_angle",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=str(c),
+        explanation_steps=steps,
+        diagram=None,
+    )
+
+
+def grade_triangle_interior_angle(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_triangle_interior_angle(seed)
+    try:
+        is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
+# ---------------- New Templates: Advanced Systems / Rationals ----------------
+
+def generate_linear_system_3x3(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    # Choose integer solution first
+    x0 = rng.randint(-3, 3)
+    y0 = rng.randint(-3, 3)
+    z0 = rng.randint(-3, 3)
+    # Coefficients with full rank
+    while True:
+        a = rng.randint(-5, 5) or 1
+        b = rng.randint(-5, 5) or 2
+        c = rng.randint(-5, 5) or -2
+        d = rng.randint(-5, 5) or 3
+        e = rng.randint(-5, 5) or -1
+        f = rng.randint(-5, 5) or 4
+        g = rng.randint(-5, 5) or 2
+        h = rng.randint(-5, 5) or -3
+        i = rng.randint(-5, 5) or 5
+        mat = sp.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+        if mat.det() != 0:
+            break
+    r1 = a * x0 + b * y0 + c * z0
+    r2 = d * x0 + e * y0 + f * z0
+    r3 = g * x0 + h * y0 + i * z0
+    prompt_latex = (
+        "Solve the system for (x, y, z):\\n\\["
+        + f"\\begin{{cases}} {a}x {b:+}y {c:+}z = {r1} \\\\"
+        + f" {d}x {e:+}y {f:+}z = {r2} \\\\"
+        + f" {g}x {h:+}y {i:+}z = {r3} \\end{{cases}}"
+        + "\\]"
+    )
+    steps = [
+        "Use elimination or matrix methods to solve.",
+        "Solution: x = " + str(x0) + ", y = " + str(y0) + ", z = " + str(z0),
+    ]
+    return GeneratedItem(
+        domain="Advanced",
+        skill="linear_system_3x3",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=f"{x0},{y0},{z0}",
+        explanation_steps=steps,
+    )
+
+
+def _parse_triple(answer: str) -> Tuple[int, int, int]:
+    s = answer.strip().replace("(", "").replace(")", "")
+    sep = "," if "," in s else None
+    parts = [p for p in (s.split(sep) if sep else s.split()) if p]
+    if len(parts) != 3:
+        raise ValueError("expected three numbers")
+    return (
+        int(sp.Integer(parts[0])),
+        int(sp.Integer(parts[1])),
+        int(sp.Integer(parts[2])),
+    )
+
+
+def grade_linear_system_3x3(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_linear_system_3x3(seed)
+    try:
+        ux, uy, uz = _parse_triple(user_answer)
+        sx, sy, sz = _parse_triple(item.solution_str)
+        is_equal = (ux == sx) and (uy == sy) and (uz == sz)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
+def generate_rational_equation(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    # Construct (x/a) + (b/x) = c with integer x solution
+    x0 = rng.choice([2, 3, 4, 5, 6])
+    a = rng.choice([2, 3, 4, 6])
+    b = a * x0  # ensures solvable integer
+    c = x0 // a + b // x0
+    prompt_latex = (
+        "Solve for x: "
+        f"\\[\\frac{{x}}{{{a}}} + \\frac{{{b}}}{{x}} = {c}\\]"
+    )
+    steps = [
+        "Multiply both sides by " + f"{a}x to clear denominators.",
+        "Solve resulting quadratic to get x = "
+        + f"{x0} (discard extraneous if any).",
+    ]
+    return GeneratedItem(
+        domain="Advanced",
+        skill="rational_equation",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=str(int(x0)),
+        explanation_steps=steps,
+    )
+
+
+def grade_rational_equation(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_rational_equation(seed)
+    try:
+        is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
+# -------------------- New Templates: PSD Word Problems --------------------
+
+def generate_psd_unit_rate(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    total_cost = rng.randint(30, 120)
+    items = rng.choice([3, 4, 5, 6, 8, 10, 12])
+    rate = total_cost / items
+    prompt_latex = (
+        "\\text{A store sells a pack of }"
+        + str(items)
+        + " \\text{ items for $}"
+        + str(total_cost)
+        + ". \\text{What is the unit price per item (in dollars)?}"
+    )
+    steps = [
+        f"Compute unit rate: {total_cost} / {items} = {rate:.2f}",
+    ]
+    return GeneratedItem(
+        domain="PSD",
+        skill="unit_rate",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=f"{rate:.2f}",
+        explanation_steps=steps,
+    )
+
+
+def grade_psd_unit_rate(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_psd_unit_rate(seed)
     try:
         is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
     except Exception:

@@ -11,10 +11,16 @@ type Skill =
     | 'two_step_equation'
     | 'proportion'
     | 'linear_system_2x2'
+    | 'linear_system_3x3'
     | 'quadratic_roots'
     | 'exponential_solve'
     | 'pythagorean_hypotenuse'
     | 'pythagorean_leg'
+    | 'rectangle_area'
+    | 'rectangle_perimeter'
+    | 'triangle_angle'
+    | 'rational_equation'
+    | 'unit_rate'
 
 type GenerateResponse = {
     domain: string
@@ -91,14 +97,20 @@ function App() {
         ],
         PSD: [
             { value: 'proportion', label: 'Proportion' },
+            { value: 'unit_rate', label: 'Unit rate (word problem)' },
         ],
         Advanced: [
             { value: 'quadratic_roots', label: 'Quadratic roots' },
             { value: 'exponential_solve', label: 'Exponential solve' },
+            { value: 'linear_system_3x3', label: '3x3 system' },
+            { value: 'rational_equation', label: 'Rational equation' },
         ],
         Geometry: [
             { value: 'pythagorean_hypotenuse', label: 'Pythagorean hypotenuse' },
             { value: 'pythagorean_leg', label: 'Pythagorean leg' },
+            { value: 'rectangle_area', label: 'Rectangle area' },
+            { value: 'rectangle_perimeter', label: 'Rectangle perimeter' },
+            { value: 'triangle_angle', label: 'Triangle interior angle' },
         ],
     }
 

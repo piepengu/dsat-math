@@ -15,20 +15,30 @@ from .generators import (
     generate_linear_equation,
     generate_linear_equation_mc,
     generate_linear_system_2x2,
+    generate_linear_system_3x3,
     generate_proportion,
     generate_pythagorean_hypotenuse,
     generate_pythagorean_leg,
+    generate_rectangle_area,
+    generate_rectangle_perimeter,
+    generate_triangle_interior_angle,
     generate_quadratic_roots,
     generate_two_step_equation,
     grade_exponential_solve,
     grade_linear_equation,
     grade_linear_equation_mc,
     grade_linear_system_2x2,
+    grade_linear_system_3x3,
     grade_proportion,
     grade_pythagorean_hypotenuse,
     grade_pythagorean_leg,
+    grade_rectangle_area,
+    grade_rectangle_perimeter,
+    grade_triangle_interior_angle,
     grade_quadratic_roots,
     grade_two_step_equation,
+    generate_rational_equation,
+    grade_rational_equation,
 )
 from .models import Attempt
 from .schemas import (
@@ -78,14 +88,22 @@ Base.metadata.create_all(bind=engine)
 # Lightweight migration for new analytics columns on SQLite
 try:
     with engine.connect() as _conn:
-        rows = _conn.exec_driver_sql("PRAGMA table_info(attempts)").fetchall()
+        rows = _conn.exec_driver_sql(
+            "PRAGMA table_info(attempts)"
+        ).fetchall()
         existing = {r[1] for r in rows}
         if "source" not in existing:
-            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN source TEXT")
+            _conn.exec_driver_sql(
+                "ALTER TABLE attempts ADD COLUMN source TEXT"
+            )
         if "time_ms" not in existing:
-            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN time_ms INTEGER")
+            _conn.exec_driver_sql(
+                "ALTER TABLE attempts ADD COLUMN time_ms INTEGER"
+            )
         if "created_at" not in existing:
-            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN created_at DATETIME")
+            _conn.exec_driver_sql(
+                "ALTER TABLE attempts ADD COLUMN created_at DATETIME"
+            )
 except Exception:
     pass
 
@@ -106,16 +124,26 @@ def generate_item(req: GenerateRequest):
         item = generate_proportion(seed)
     elif req.domain == "Algebra" and req.skill == "linear_system_2x2":
         item = generate_linear_system_2x2(seed)
+    elif req.domain == "Advanced" and req.skill == "linear_system_3x3":
+        item = generate_linear_system_3x3(seed)
     elif req.domain == "Algebra" and req.skill == "linear_equation_mc":
         item = generate_linear_equation_mc(seed)
     elif req.domain == "Advanced" and req.skill == "quadratic_roots":
         item = generate_quadratic_roots(seed)
     elif req.domain == "Advanced" and req.skill == "exponential_solve":
         item = generate_exponential_solve(seed)
+    elif req.domain == "Advanced" and req.skill == "rational_equation":
+        item = generate_rational_equation(seed)
     elif req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
         item = generate_pythagorean_hypotenuse(seed)
     elif req.domain == "Geometry" and req.skill == "pythagorean_leg":
         item = generate_pythagorean_leg(seed)
+    elif req.domain == "Geometry" and req.skill == "rectangle_area":
+        item = generate_rectangle_area(seed)
+    elif req.domain == "Geometry" and req.skill == "rectangle_perimeter":
+        item = generate_rectangle_perimeter(seed)
+    elif req.domain == "Geometry" and req.skill == "triangle_angle":
+        item = generate_triangle_interior_angle(seed)
     else:
         # default to linear equation for now
         item = generate_linear_equation(seed)
@@ -147,6 +175,11 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         )
     elif req.domain == "Algebra" and req.skill == "linear_system_2x2":
         correct, sol, steps = grade_linear_system_2x2(
+            req.seed,
+            req.user_answer,
+        )
+    elif req.domain == "Advanced" and req.skill == "linear_system_3x3":
+        correct, sol, steps = grade_linear_system_3x3(
             req.seed,
             req.user_answer,
         )
@@ -187,6 +220,11 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             req.seed,
             req.user_answer,
         )
+    elif req.domain == "Advanced" and req.skill == "rational_equation":
+        correct, sol, steps = grade_rational_equation(
+            req.seed,
+            req.user_answer,
+        )
     elif req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
         correct, sol, steps = grade_pythagorean_hypotenuse(
             req.seed,
@@ -194,6 +232,18 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         )
     elif req.domain == "Geometry" and req.skill == "pythagorean_leg":
         correct, sol, steps = grade_pythagorean_leg(req.seed, req.user_answer)
+    elif req.domain == "Geometry" and req.skill == "rectangle_area":
+        correct, sol, steps = grade_rectangle_area(req.seed, req.user_answer)
+    elif req.domain == "Geometry" and req.skill == "rectangle_perimeter":
+        correct, sol, steps = grade_rectangle_perimeter(
+            req.seed,
+            req.user_answer,
+        )
+    elif req.domain == "Geometry" and req.skill == "triangle_angle":
+        correct, sol, steps = grade_triangle_interior_angle(
+            req.seed,
+            req.user_answer,
+        )
     else:
         correct, sol, steps = grade_linear_equation(req.seed, req.user_answer)
 
@@ -296,7 +346,9 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
         correct=correct,
         correct_answer=str(req.correct_answer or ""),
         source="ai",
-        time_ms=(req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None),
+        time_ms=(
+            req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None
+        ),
     )
     db.add(db_attempt)
     db.commit()
@@ -310,7 +362,10 @@ def generate_ai(req: GenerateAIRequest):
         # when possible
         seed = random.randint(1, 10_000_000)
         try:
-            if req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
+            if (
+                req.domain == "Geometry"
+                and req.skill == "pythagorean_hypotenuse"
+            ):
                 item = generate_pythagorean_hypotenuse(seed)
                 # Convert to a well-formed MC with 4 choices
                 sol = str(item.solution_str)
@@ -394,7 +449,9 @@ def generate_ai(req: GenerateAIRequest):
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
-        generation_config={"response_mime_type": "application/json"},
+        generation_config={
+            "response_mime_type": "application/json",
+        },
     )
     try:
         resp = model.generate_content(prompt)
@@ -442,7 +499,9 @@ def generate_ai(req: GenerateAIRequest):
             valid = False
         if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
             valid = False
-        if not (isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000):
+        if not (
+            isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000
+        ):
             valid = False
         # Disallow problematic commands that break KaTeX
         if re.search(
@@ -456,7 +515,10 @@ def generate_ai(req: GenerateAIRequest):
 
         # Optional diagram validation (currently supports right_triangle)
         diagram_out = None
-        if isinstance(diagram, dict) and diagram.get("type") == "right_triangle":
+        if (
+            isinstance(diagram, dict)
+            and diagram.get("type") == "right_triangle"
+        ):
             try:
                 da = int(diagram.get("a", 0))
                 db = int(diagram.get("b", 0))
