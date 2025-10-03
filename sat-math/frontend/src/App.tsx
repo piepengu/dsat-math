@@ -62,6 +62,7 @@ type GenerateAIResponse = {
 }
 
 function App() {
+    const APP_BUILD = '765eeee'
     const [domain, setDomain] = useState<Domain>('Algebra')
     const [skill, setSkill] = useState<Skill>('linear_equation')
     const [seed, setSeed] = useState<number | null>(null)
@@ -341,11 +342,11 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
-                    <div>API base: {apiBase || '(not set, using 127.0.0.1 fallback)'}</div>
+                    <div>API base: {apiBase || '(not set, using 127.0.0.1 fallback)'} · Build: {APP_BUILD}</div>
                     {lastError && <div className="mt-1">Last error: {lastError}</div>}
                 </div>
                 <h2 className="text-2xl font-semibold mb-3">DSAT Math Practice</h2>
@@ -672,7 +673,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -696,7 +697,7 @@ function App() {
                         }}
                     >
                         My Stats
-        </button>
+                    </button>
                     {stats && (
                         <table className="w-full mt-2 border-collapse">
                             <thead>
@@ -723,8 +724,8 @@ function App() {
                     )}
                 </div>
             </div>
-      </div>
-  )
+        </div>
+    )
 }
 
 export default App
