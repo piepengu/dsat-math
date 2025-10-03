@@ -96,17 +96,13 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
     for x in options:
         if x == sol_val:
             why_map.append(
-                "Correct — solves the equation after proper distribution/"
-                "isolation."
+                "Correct — solves the equation after proper distribution/" "isolation."
             )
         elif x == d2:
-            why_map.append(
-                "Sign error when moving terms across the equals sign."
-            )
+            why_map.append("Sign error when moving terms across the equals sign.")
         elif x == d1:
             why_map.append(
-                "Arithmetic slip (off-by-one/two) during add/"
-                "subtract step."
+                "Arithmetic slip (off-by-one/two) during add/" "subtract step."
             )
         else:
             why_map.append("Stopped early or misapplied division step.")
@@ -458,10 +454,8 @@ def generate_pythagorean_leg(seed: int) -> GeneratedItem:
         + ". Find the other leg.}"
     )
     steps: List[str] = [
-        "Use c^2 - a^2 = b^2: "
-        + f"{hyp}^2 - {leg_known}^2 = b^2",
-        "Compute: "
-        + f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2",
+        "Use c^2 - a^2 = b^2: " + f"{hyp}^2 - {leg_known}^2 = b^2",
+        "Compute: " + f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2",
         "Take square root: " + f"b = {other_leg}",
     ]
     return GeneratedItem(
@@ -500,17 +494,14 @@ def grade_pythagorean_leg(
 
 # -------------- New Templates: Geometry Areas / Angles --------------
 
+
 def generate_rectangle_area(seed: int) -> GeneratedItem:
     rng = random.Random(seed)
     w = rng.randint(3, 20)
     h = rng.randint(3, 20)
     area = w * h
     prompt_latex = (
-        "A rectangle has width "
-        + str(w)
-        + " and height "
-        + str(h)
-        + ". Find its area."
+        "A rectangle has width " + str(w) + " and height " + str(h) + ". Find its area."
     )
     steps = [
         "Use area = width × height: " + f"A = {w}·{h}",
@@ -635,6 +626,7 @@ def grade_triangle_interior_angle(
 
 # ---------------- New Templates: Advanced Systems / Rationals ----------------
 
+
 def generate_linear_system_3x3(seed: int) -> GeneratedItem:
     rng = random.Random(seed)
     # Choose integer solution first
@@ -715,13 +707,11 @@ def generate_rational_equation(seed: int) -> GeneratedItem:
     b = a * x0  # ensures solvable integer
     c = x0 // a + b // x0
     prompt_latex = (
-        "Solve for x: "
-        f"\\[\\frac{{x}}{{{a}}} + \\frac{{{b}}}{{x}} = {c}\\]"
+        "Solve for x: " f"\\[\\frac{{x}}{{{a}}} + \\frac{{{b}}}{{x}} = {c}\\]"
     )
     steps = [
         "Multiply both sides by " + f"{a}x to clear denominators.",
-        "Solve resulting quadratic to get x = "
-        + f"{x0} (discard extraneous if any).",
+        "Solve resulting quadratic to get x = " + f"{x0} (discard extraneous if any).",
     ]
     return GeneratedItem(
         domain="Advanced",
@@ -748,17 +738,19 @@ def grade_rational_equation(
 
 # -------------------- New Templates: PSD Word Problems --------------------
 
+
 def generate_psd_unit_rate(seed: int) -> GeneratedItem:
     rng = random.Random(seed)
     total_cost = rng.randint(30, 120)
     items = rng.choice([3, 4, 5, 6, 8, 10, 12])
     rate = total_cost / items
+    # Use plain text to avoid fragmented \text{...} rendering artifacts in KaTeX
     prompt_latex = (
-        "\\text{A store sells a pack of }"
+        "A store sells a pack of "
         + str(items)
-        + " \\text{ items for $}"
+        + " items for $"
         + str(total_cost)
-        + ". \\text{What is the unit price per item (in dollars)?}"
+        + ". What is the unit price per item (in dollars)?"
     )
     steps = [
         f"Compute unit rate: {total_cost} / {items} = {rate:.2f}",
