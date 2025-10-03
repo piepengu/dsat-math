@@ -520,6 +520,27 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                 )
+            if req.domain == "Advanced" and req.skill == "quadratic_roots":
+                item = generate_quadratic_roots(seed)
+                try:
+                    parts = str(item.solution_str).split(",")
+                    r1 = int(parts[0])
+                    r2 = int(parts[1])
+                except Exception:
+                    r1, r2 = 0, 0
+                distractors2 = [
+                    (r1 + 1, r2),
+                    (r1, r2 - 1),
+                    (-r1, -r2),
+                ]
+                opts2 = [(r1, r2)] + distractors2
+                choices = [f"({a}, {b})" for (a, b) in opts2]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
             if req.domain == "Advanced" and req.skill == "exponential_solve":
                 item = generate_exponential_solve(seed)
                 try:
@@ -550,6 +571,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
         except Exception:
             # fall back to linear MC below
@@ -675,7 +701,7 @@ def generate_ai(req: GenerateAIRequest):
             ):
                 if not all(_sp.sympify(c, evaluate=False) is not None for c in choices):
                     valid = False
-            if req.skill in ("linear_system_2x2",):
+            if req.skill in ("linear_system_2x2", "quadratic_roots"):
 
                 def _is_pair(s: str) -> bool:
                     t = s.strip()
