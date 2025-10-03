@@ -506,11 +506,11 @@ def generate_rectangle_area(seed: int) -> GeneratedItem:
     h = rng.randint(3, 20)
     area = w * h
     prompt_latex = (
-        "\\text{A rectangle has width }"
+        "A rectangle has width "
         + str(w)
-        + " \\text{ and height } "
+        + " and height "
         + str(h)
-        + ". \\text{Find its area.}"
+        + ". Find its area."
     )
     steps = [
         "Use area = width × height: " + f"A = {w}·{h}",
@@ -545,11 +545,11 @@ def generate_rectangle_perimeter(seed: int) -> GeneratedItem:
     h = rng.randint(3, 20)
     perim = 2 * (w + h)
     prompt_latex = (
-        "\\text{A rectangle has width }"
+        "A rectangle has width "
         + str(w)
-        + " \\text{ and height } "
+        + " and height "
         + str(h)
-        + ". \\text{Find its perimeter.}"
+        + ". Find its perimeter."
     )
     steps = [
         "Perimeter P = 2(w + h) = " + f"2({w} + {h})",
