@@ -149,6 +149,17 @@ def generate_item(req: GenerateRequest):
         # default to linear equation for now
         item = generate_linear_equation(seed)
 
+    # Derive basic hints from explanation steps (first 1-2 steps)
+    base_hints: List[str] = []
+    try:
+        steps_src = getattr(item, "explanation_steps", []) or []
+        if isinstance(steps_src, list) and steps_src:
+            base_hints = [str(steps_src[0])]
+            if len(steps_src) > 1:
+                base_hints.append(str(steps_src[1]))
+    except Exception:
+        base_hints = []
+
     return GenerateResponse(
         domain=item.domain,
         skill=item.skill,
@@ -157,6 +168,7 @@ def generate_item(req: GenerateRequest):
         prompt_latex=item.prompt_latex,
         choices=getattr(item, "choices", None),
         diagram=getattr(item, "diagram", None),
+        hints=base_hints or None,
     )
 
 
@@ -382,6 +394,11 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Geometry" and req.skill == "pythagorean_leg":
                 item = generate_pythagorean_leg(seed)
@@ -398,6 +415,11 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_area":
                 item = generate_rectangle_area(seed)
@@ -413,6 +435,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_perimeter":
                 item = generate_rectangle_perimeter(seed)
@@ -428,6 +455,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Geometry" and req.skill == "triangle_angle":
                 item = generate_triangle_interior_angle(seed)
@@ -443,6 +475,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Algebra" and req.skill == "linear_system_2x2":
                 item = generate_linear_system_2x2(seed)
@@ -460,6 +497,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Advanced" and req.skill == "linear_system_3x3":
                 from .generators import _parse_triple  # local helper
@@ -481,6 +523,11 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    hints=(
+                        item.explanation_steps[:2]
+                        if item.explanation_steps
+                        else None
+                    ),
                 )
             if req.domain == "Advanced" and req.skill == "rational_equation":
                 item = generate_rational_equation(seed)
@@ -527,6 +574,11 @@ def generate_ai(req: GenerateAIRequest):
             choices=item.choices or ["1", "2", "3", "4"],
             correct_index=int(item.correct_index or 0),
             explanation_steps=item.explanation_steps,
+            hints=(
+                item.explanation_steps[:2]
+                if item.explanation_steps
+                else None
+            ),
         )
 
     # If AI is unavailable, immediately return fallback
@@ -588,6 +640,7 @@ def generate_ai(req: GenerateAIRequest):
         choices = data.get("choices") or []
         correct_index = int(data.get("correct_index", -1))
         steps = data.get("explanation_steps") or []
+        hints = data.get("hints") or None
         prompt_latex = data.get("prompt_latex") or ""
         diagram = data.get("diagram") or None
 
@@ -647,6 +700,16 @@ def generate_ai(req: GenerateAIRequest):
             correct_index=int(correct_index),
             explanation_steps=[str(s) for s in steps],
             diagram=diagram_out,
+            hints=(
+                hints
+                if hints
+                else (
+                    [str(steps[0])]
+                    + ([str(steps[1])] if len(steps) > 1 else [])
+                    if steps
+                    else None
+                )
+            ),
         )
     except Exception:
         # Any unexpected error — safe fallback

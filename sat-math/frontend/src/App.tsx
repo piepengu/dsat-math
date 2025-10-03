@@ -42,6 +42,7 @@ type GenerateResponse = {
         sideTicks?: Array<{ side: 'a' | 'b' | 'c'; count: 1 | 2 | 3 }>
         showLabels?: boolean
         triangle?: { mode: 'SSS' | 'SAS' | 'ASA'; A?: number; B?: number; C?: number; a?: number; b?: number; c?: number }
+        hints?: string[]
     } | null
 }
 
@@ -59,6 +60,7 @@ type GenerateAIResponse = {
     correct_index: number
     explanation_steps: string[]
     diagram?: GenerateResponse['diagram']
+    hints?: string[]
 }
 
 function App() {
@@ -85,6 +87,8 @@ function App() {
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
+    const [hints, setHints] = useState<string[]>([])
+    const [hintsShown, setHintsShown] = useState<number>(0)
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
     const [startTs, setStartTs] = useState<number | null>(null)
     const [nowTs, setNowTs] = useState<number>(Date.now())
@@ -247,6 +251,8 @@ function App() {
                 setAiCorrectIndex(resp.data.correct_index)
                 setAiExplanation(resp.data.explanation_steps)
                 setDiagram(resp.data.diagram ?? null)
+                setHints(resp.data.hints ?? [])
+                setHintsShown(0)
                 setLabelsOn((resp.data.diagram as any)?.showLabels ?? true)
             } else {
                 const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
@@ -257,6 +263,8 @@ function App() {
                 setSeed(resp.data.seed)
                 setChoices(resp.data.choices ?? null)
                 setDiagram(resp.data.diagram ?? null)
+                setHints((resp.data as any).hints ?? [])
+                setHintsShown(0)
                 setLabelsOn((resp.data.diagram as any)?.showLabels ?? true)
             }
             setStartTs(Date.now())
@@ -521,6 +529,26 @@ function App() {
                 {/* live timer */}
                 {startTs != null && result == null && (
                     <div className="text-sm text-gray-600 mb-2">Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s</div>
+                )}
+
+                {/* hints */}
+                {(hints && hints.length > 0) && (
+                    <div className="mb-3">
+                        <button
+                            className="inline-flex items-center px-3 py-1.5 rounded bg-amber-200 text-amber-900 hover:bg-amber-300 text-sm"
+                            onClick={() => setHintsShown((n) => Math.min(hints.length, n + 1))}
+                            disabled={hintsShown >= hints.length}
+                        >
+                            {hintsShown >= hints.length ? 'All hints shown' : 'Need a hint?'}
+                        </button>
+                        {hintsShown > 0 && (
+                            <ul className="mt-2 list-disc list-inside text-sm text-gray-800 space-y-1">
+                                {hints.slice(0, hintsShown).map((h, i) => (
+                                    <li key={i}>{h}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 )}
 
                 {diagram && (

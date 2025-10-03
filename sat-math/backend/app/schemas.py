@@ -17,6 +17,7 @@ class GenerateResponse(BaseModel):
     prompt_latex: str
     choices: Optional[List[str]] = None
     diagram: Optional["DiagramSpec"] = None
+    hints: Optional[List[str]] = None
 
 
 class DiagramSpec(BaseModel):
@@ -90,6 +91,7 @@ class GenerateAIResponse(BaseModel):
     correct_index: int
     explanation_steps: List[str]
     diagram: Optional[DiagramSpec] = None
+    hints: Optional[List[str]] = None
 
 
 class AttemptAIRequest(BaseModel):
