@@ -154,3 +154,80 @@ Planned for tomorrow
 - Expand templates: more Geometry (area/perimeter, angles), Advanced (systems 3×3, rationals), PSD word problems.
 - Diagram upgrades: angle markers, side ticks, labels toggle; triangles with given angles/sides.
 - Robust AI guardrails: stronger schema + math validation; fallback to templates on any mismatch.
+
+
+Updates (2025-10-03)
+- Backend
+  - Extended `DiagramSpec` to support generic triangles: `angleMarkers`, `sideTicks`, `showLabels`, `points`, and a `triangle` descriptor.
+  - Updated `triangle_angle` generator to emit a triangle diagram spec (ASA) with angle markers and side ticks.
+  - Kept existing right-triangle support for Pythagorean templates and AI fallbacks.
+- Frontend
+  - Added `TriangleDiagram` SVG renderer; supports angle arcs, side ticks, and a “Show labels” toggle.
+  - Unified the “Show labels” toggle for all diagrams (now applies to `right_triangle` too).
+  - Surfaced build/version info in the in-app debug banner for cache verification.
+  - Rebranded app name to “DSAT Math Forge” (document title and main heading).
+  - Fixed TypeScript issues (removed unused variable; typed ReactNode to avoid JSX namespace error).
+- Deployment (GitHub Pages)
+  - Rebuilt and published the latest frontend to `docs/` on `master` (Pages source).
+  - Added a static build marker in `index.html` to verify deploy propagation; provided versioned URL fallback for cache busting.
+  - Documented steps to force-refresh Pages (toggle Pages source None→/docs; disable cache; incognito).
+- Verification
+  - Local build verified; Pages propagation can take a minute—next session will verify that the banner and the “Show labels” toggle appear in production for diagram-enabled skills.
+
+Planned for tomorrow (2025-10-04)
+- Finalize Pages propagation: confirm yellow build marker and in-app build tag are visible.
+- Verify “Show labels” toggle appears for Geometry diagrams (Triangle interior angle, Pythagorean) in production.
+- Tighten AI guardrails and extend fallbacks where needed (new skills).
+- Expand geometry templates further (angles/perimeter variants) and add more targeted MC distractors.
+- Optional: consolidate to GitHub Actions Pages-only deploy and remove manual docs steps once stable.
+
+End of day notes (2025-10-03)
+- Diagram system upgraded end-to-end (schema → generator → renderer → UI toggle) and app renamed to DSAT Math Forge. Deployment updates pushed; will validate on production after Pages refresh.
+
+
+Today's accomplishments (additional, 2025-10-03)
+- Backend
+  - Fixed PSD `unit_rate` prompt formatting to plain text (removed fragmented `\text{}` artifacts).
+  - Extended AI guardrails (v2 groundwork): normalized choices to strings, enforced uniqueness/length, added SymPy checks for numeric skills, and format checks for 2×2 pairs and 3×3 triples; blacklisted problematic LaTeX commands; capped explanation steps.
+  - Added dedicated AI fallbacks for `exponential_solve` and `quadratic_roots` with plausible distractors and derived hints.
+- Frontend
+  - Added a “Need a hint?” button that reveals step-based hints.
+  - Domain-based filtering for the skill dropdown verified; difficulty + AI toggles stable.
+  - Stats: “Avg time” column visible; headers restored to neutral black.
+- Deployment/Infra
+  - Tightened CORS and kept auto-migration for `source`, `time_ms`, `created_at` columns.
+  - Added build/version markers and guidance to mitigate GitHub Pages caching.
+
+
+Adaptive Difficulty Plan (v1 → v2)
+- Goals
+  - Ship a simple, effective adaptive flow quickly (v1), then iterate to a model-based approach (Elo/Bayesian/IRT) with real data (v2).
+
+- Prerequisites
+  - Persist `difficulty` on attempts (DB migration + API models + frontend pass-through).
+  - Enhance `/stats` to include avg time by skill and difficulty, and break down by source (AI vs template). Ensure AI attempts contribute to averages.
+
+- Adaptive v1 (rule-based)
+  - Backend
+    - Add `difficulty` (Easy/Medium/Hard) to `attempts`; migrate safely if missing.
+    - Implement rule engine per skill: start at Medium; if last 2 correct and avg time under threshold → bump up; if incorrect or repeated slow → bump down; clamp to [Easy, Hard].
+    - New `POST /next` endpoint returns the next (skill, difficulty) given user_id, current domain/skill focus, and recent performance.
+    - Log decisions (inputs, rule applied, output difficulty) for tuning.
+  - Frontend
+    - Add an “Adaptive mode” toggle; when on, hide manual difficulty picker.
+    - Before each question, call `/next` to fetch difficulty; display a small “Adaptive: <level>” indicator and a subtle streak/time hint.
+  - QA
+    - Seeded test runs to verify transitions; confirm logs and guardrails remain active.
+
+- Adaptive v2 (after data)
+  - Replace rules with per-skill proficiency (Elo/Bayesian), time-normalized, with confidence to reduce oscillation; cold-start defaults by domain/skill.
+
+- Effort
+  - v1: ~0.5–1 day end-to-end; v2: ~2–4 days once data is sufficient.
+
+
+Planned for tomorrow (additions for 2025-10-04)
+- Verify PSD → Unit rate prompt renders cleanly in production (no stray `}`/`\text{}`) and update if needed.
+- Implement logging for guardrail-triggered fallbacks in the backend for observability.
+- Start Adaptive v1: add `difficulty` to attempts and wire it through models and UI.
+- Extend `/stats` to include avg time by skill+difficulty and include AI attempts in averages.
