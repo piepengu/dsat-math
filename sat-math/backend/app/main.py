@@ -17,14 +17,15 @@ from .generators import (
     generate_linear_system_2x2,
     generate_linear_system_3x3,
     generate_proportion,
+    generate_psd_unit_rate,
     generate_pythagorean_hypotenuse,
     generate_pythagorean_leg,
+    generate_quadratic_roots,
+    generate_rational_equation,
     generate_rectangle_area,
     generate_rectangle_perimeter,
     generate_triangle_interior_angle,
-    generate_quadratic_roots,
     generate_two_step_equation,
-    generate_psd_unit_rate,
     grade_exponential_solve,
     grade_linear_equation,
     grade_linear_equation_mc,
@@ -33,13 +34,12 @@ from .generators import (
     grade_proportion,
     grade_pythagorean_hypotenuse,
     grade_pythagorean_leg,
+    grade_quadratic_roots,
+    grade_rational_equation,
     grade_rectangle_area,
     grade_rectangle_perimeter,
     grade_triangle_interior_angle,
-    grade_quadratic_roots,
     grade_two_step_equation,
-    generate_rational_equation,
-    grade_rational_equation,
 )
 from .models import Attempt
 from .schemas import (
@@ -89,22 +89,14 @@ Base.metadata.create_all(bind=engine)
 # Lightweight migration for new analytics columns on SQLite
 try:
     with engine.connect() as _conn:
-        rows = _conn.exec_driver_sql(
-            "PRAGMA table_info(attempts)"
-        ).fetchall()
+        rows = _conn.exec_driver_sql("PRAGMA table_info(attempts)").fetchall()
         existing = {r[1] for r in rows}
         if "source" not in existing:
-            _conn.exec_driver_sql(
-                "ALTER TABLE attempts ADD COLUMN source TEXT"
-            )
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN source TEXT")
         if "time_ms" not in existing:
-            _conn.exec_driver_sql(
-                "ALTER TABLE attempts ADD COLUMN time_ms INTEGER"
-            )
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN time_ms INTEGER")
         if "created_at" not in existing:
-            _conn.exec_driver_sql(
-                "ALTER TABLE attempts ADD COLUMN created_at DATETIME"
-            )
+            _conn.exec_driver_sql("ALTER TABLE attempts ADD COLUMN created_at DATETIME")
 except Exception:
     pass
 
@@ -359,9 +351,7 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
         correct=correct,
         correct_answer=str(req.correct_answer or ""),
         source="ai",
-        time_ms=(
-            req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None
-        ),
+        time_ms=(req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None),
     )
     db.add(db_attempt)
     db.commit()
@@ -375,10 +365,7 @@ def generate_ai(req: GenerateAIRequest):
         # when possible
         seed = random.randint(1, 10_000_000)
         try:
-            if (
-                req.domain == "Geometry"
-                and req.skill == "pythagorean_hypotenuse"
-            ):
+            if req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
                 item = generate_pythagorean_hypotenuse(seed)
                 # Convert to a well-formed MC with 4 choices
                 sol = str(item.solution_str)
@@ -395,9 +382,7 @@ def generate_ai(req: GenerateAIRequest):
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Geometry" and req.skill == "pythagorean_leg":
@@ -416,9 +401,7 @@ def generate_ai(req: GenerateAIRequest):
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_area":
@@ -436,9 +419,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_perimeter":
@@ -456,9 +437,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Geometry" and req.skill == "triangle_angle":
@@ -476,9 +455,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Algebra" and req.skill == "linear_system_2x2":
@@ -498,9 +475,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Advanced" and req.skill == "linear_system_3x3":
@@ -524,9 +499,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     hints=(
-                        item.explanation_steps[:2]
-                        if item.explanation_steps
-                        else None
+                        item.explanation_steps[:2] if item.explanation_steps else None
                     ),
                 )
             if req.domain == "Advanced" and req.skill == "rational_equation":
@@ -541,6 +514,19 @@ def generate_ai(req: GenerateAIRequest):
                     str(sol - 2),
                     str(sol + 3),
                 ]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "Advanced" and req.skill == "exponential_solve":
+                item = generate_exponential_solve(seed)
+                try:
+                    sol = int(item.solution_str)
+                except Exception:
+                    sol = 0
+                choices = [str(sol), str(sol + 1), str(sol - 1), str(sol + 2)]
                 return GenerateAIResponse(
                     prompt_latex=item.prompt_latex,
                     choices=choices,
@@ -574,11 +560,7 @@ def generate_ai(req: GenerateAIRequest):
             choices=item.choices or ["1", "2", "3", "4"],
             correct_index=int(item.correct_index or 0),
             explanation_steps=item.explanation_steps,
-            hints=(
-                item.explanation_steps[:2]
-                if item.explanation_steps
-                else None
-            ),
+            hints=(item.explanation_steps[:2] if item.explanation_steps else None),
         )
 
     # If AI is unavailable, immediately return fallback
@@ -651,13 +633,15 @@ def generate_ai(req: GenerateAIRequest):
         valid = True
         if not (isinstance(choices, list) and len(choices) == 4):
             valid = False
-        if not all(_ok_choice(str(c)) for c in choices):
+        # normalize choices to strings and enforce uniqueness/length
+        choices = [str(c) for c in choices]
+        if not all(_ok_choice(c) for c in choices):
+            valid = False
+        if len(set(choices)) != 4:
             valid = False
         if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
             valid = False
-        if not (
-            isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000
-        ):
+        if not (isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000):
             valid = False
         # Disallow problematic commands that break KaTeX
         if re.search(
@@ -665,16 +649,54 @@ def generate_ai(req: GenerateAIRequest):
             prompt_latex,
         ):
             valid = False
-        # Explanation steps size cap
+        # Explanation steps size cap and per-step length
         if not (isinstance(steps, list) and 1 <= len(steps) <= 10):
+            valid = False
+        else:
+            if any((not isinstance(s, str)) or (len(s) > 240) for s in steps):
+                valid = False
+
+        # Skill-specific math/format validation
+        try:
+            import sympy as _sp
+
+            if req.skill in (
+                "linear_equation",
+                "linear_equation_mc",
+                "two_step_equation",
+                "exponential_solve",
+                "rational_equation",
+                "pythagorean_hypotenuse",
+                "pythagorean_leg",
+                "rectangle_area",
+                "rectangle_perimeter",
+                "triangle_angle",
+                "unit_rate",
+            ):
+                if not all(_sp.sympify(c, evaluate=False) is not None for c in choices):
+                    valid = False
+            if req.skill in ("linear_system_2x2",):
+
+                def _is_pair(s: str) -> bool:
+                    t = s.strip()
+                    return t.startswith("(") and t.endswith(")") and "," in t
+
+                if not all(_is_pair(c) for c in choices):
+                    valid = False
+            if req.skill in ("linear_system_3x3",):
+
+                def _is_triple(s: str) -> bool:
+                    t = s.strip()
+                    return t.startswith("(") and t.endswith(")") and t.count(",") == 2
+
+                if not all(_is_triple(c) for c in choices):
+                    valid = False
+        except Exception:
             valid = False
 
         # Optional diagram validation (currently supports right_triangle)
         diagram_out = None
-        if (
-            isinstance(diagram, dict)
-            and diagram.get("type") == "right_triangle"
-        ):
+        if isinstance(diagram, dict) and diagram.get("type") == "right_triangle":
             try:
                 da = int(diagram.get("a", 0))
                 db = int(diagram.get("b", 0))
@@ -704,8 +726,7 @@ def generate_ai(req: GenerateAIRequest):
                 hints
                 if hints
                 else (
-                    [str(steps[0])]
-                    + ([str(steps[1])] if len(steps) > 1 else [])
+                    [str(steps[0])] + ([str(steps[1])] if len(steps) > 1 else [])
                     if steps
                     else None
                 )
