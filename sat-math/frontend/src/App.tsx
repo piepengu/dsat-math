@@ -201,10 +201,13 @@ function App() {
     }
 
     const apiBase = useMemo(() => {
-        // Use env in production; fallback to local for dev
-        return (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE === ''
-            ? (import.meta as any).env.VITE_API_BASE
-            : 'http://127.0.0.1:8000'
+        const envBase = (import.meta as any).env?.VITE_API_BASE
+        if (typeof envBase === 'string' && envBase.trim() !== '') return envBase
+        // Default to Render API when running on GitHub Pages; else local dev
+        if (typeof window !== 'undefined' && window.location.host.includes('github.io')) {
+            return 'https://dsat-math.onrender.com'
+        }
+        return 'http://127.0.0.1:8000'
     }, [])
 
     // ensure persistent user id
