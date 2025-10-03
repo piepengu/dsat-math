@@ -24,6 +24,7 @@ from .generators import (
     generate_triangle_interior_angle,
     generate_quadratic_roots,
     generate_two_step_equation,
+    generate_psd_unit_rate,
     grade_exponential_solve,
     grade_linear_equation,
     grade_linear_equation_mc,
@@ -398,6 +399,51 @@ def generate_ai(req: GenerateAIRequest):
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
                 )
+            if req.domain == "Geometry" and req.skill == "rectangle_area":
+                item = generate_rectangle_area(seed)
+                sol = int(item.solution_str)
+                choices = [
+                    str(sol),
+                    str(sol + 2),
+                    str(max(1, sol - 3)),
+                    str(sol + 5),
+                ]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "Geometry" and req.skill == "rectangle_perimeter":
+                item = generate_rectangle_perimeter(seed)
+                sol = int(item.solution_str)
+                choices = [
+                    str(sol),
+                    str(sol + 2),
+                    str(max(1, sol - 4)),
+                    str(sol + 6),
+                ]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "Geometry" and req.skill == "triangle_angle":
+                item = generate_triangle_interior_angle(seed)
+                sol = int(item.solution_str)
+                choices = [
+                    str(sol),
+                    str(max(1, sol - 10)),
+                    str(sol + 5),
+                    str(sol + 10),
+                ]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
             if req.domain == "Algebra" and req.skill == "linear_system_2x2":
                 item = generate_linear_system_2x2(seed)
                 try:
@@ -409,6 +455,63 @@ def generate_ai(req: GenerateAIRequest):
                 distractors = [(sx + 1, sy), (sx, sy - 1), (sy, sx)]
                 opts = [(sx, sy)] + distractors
                 choices = [f"({x}, {y})" for (x, y) in opts]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "Advanced" and req.skill == "linear_system_3x3":
+                from .generators import _parse_triple  # local helper
+
+                item = generate_linear_system_3x3(seed)
+                try:
+                    sx, sy, sz = _parse_triple(item.solution_str)
+                except Exception:
+                    sx, sy, sz = 0, 0, 0
+                distractors3 = [
+                    (sx + 1, sy, sz),
+                    (sx, sy - 1, sz),
+                    (sy, sx, sz),
+                ]
+                opts3 = [(sx, sy, sz)] + distractors3
+                choices = [f"({x}, {y}, {z})" for (x, y, z) in opts3]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "Advanced" and req.skill == "rational_equation":
+                item = generate_rational_equation(seed)
+                try:
+                    sol = int(item.solution_str)
+                except Exception:
+                    sol = 0
+                choices = [
+                    str(sol),
+                    str(sol + 1),
+                    str(sol - 2),
+                    str(sol + 3),
+                ]
+                return GenerateAIResponse(
+                    prompt_latex=item.prompt_latex,
+                    choices=choices,
+                    correct_index=0,
+                    explanation_steps=item.explanation_steps,
+                )
+            if req.domain == "PSD" and req.skill == "unit_rate":
+                item = generate_psd_unit_rate(seed)
+                try:
+                    sol = float(item.solution_str)
+                except Exception:
+                    sol = 0.0
+                choices = [
+                    f"{sol:.2f}",
+                    f"{sol + 0.50:.2f}",
+                    f"{max(0.01, sol - 0.25):.2f}",
+                    f"{sol + 1.00:.2f}",
+                ]
                 return GenerateAIResponse(
                     prompt_latex=item.prompt_latex,
                     choices=choices,
