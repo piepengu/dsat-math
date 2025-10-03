@@ -31,10 +31,17 @@ type GenerateResponse = {
     choices?: string[]
     diagram?: {
         type: string
+        // legacy right_triangle
         a?: number
         b?: number
         c?: number
         labels?: Record<string, string>
+        // generic triangle
+        points?: Record<string, [number, number]>
+        angleMarkers?: Array<{ at: 'A'|'B'|'C'; style: 'right'|'single'|'double'|'triple'; radius?: number }>
+        sideTicks?: Array<{ side: 'a'|'b'|'c'; count: 1|2|3 }>
+        showLabels?: boolean
+        triangle?: { mode: 'SSS'|'SAS'|'ASA'; A?: number; B?: number; C?: number; a?: number; b?: number; c?: number }
     } | null
 }
 
@@ -51,13 +58,7 @@ type GenerateAIResponse = {
     choices: string[]
     correct_index: number
     explanation_steps: string[]
-    diagram?: {
-        type: string
-        a?: number
-        b?: number
-        c?: number
-        labels?: Record<string, string>
-    } | null
+    diagram?: GenerateResponse['diagram']
 }
 
 function App() {
@@ -86,6 +87,7 @@ function App() {
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
     const [startTs, setStartTs] = useState<number | null>(null)
     const [nowTs, setNowTs] = useState<number>(Date.now())
+    const [labelsOn, setLabelsOn] = useState<boolean>(true)
 
     // Domain → Skill options shown in the second dropdown
     const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
@@ -244,6 +246,7 @@ function App() {
                 setAiCorrectIndex(resp.data.correct_index)
                 setAiExplanation(resp.data.explanation_steps)
                 setDiagram(resp.data.diagram ?? null)
+                setLabelsOn((resp.data.diagram as any)?.showLabels ?? true)
             } else {
                 const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
                     domain,
@@ -253,6 +256,7 @@ function App() {
                 setSeed(resp.data.seed)
                 setChoices(resp.data.choices ?? null)
                 setDiagram(resp.data.diagram ?? null)
+                setLabelsOn((resp.data.diagram as any)?.showLabels ?? true)
             }
             setStartTs(Date.now())
             setNowTs(Date.now())
@@ -521,6 +525,22 @@ function App() {
                 {diagram && diagram.type === 'right_triangle' && (
                     <RightTriangle a={diagram.a || 0} b={diagram.b || 0} c={diagram.c || 0} labels={diagram.labels || {}} />
                 )}
+                {diagram && diagram.type === 'triangle' && (
+                    <div className="mb-3">
+                        <div className="flex items-center gap-3 mb-2">
+                            <label className="text-sm text-gray-700 flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="accent-indigo-600"
+                                    checked={labelsOn}
+                                    onChange={(e) => setLabelsOn(e.target.checked)}
+                                />
+                                Show labels
+                            </label>
+                        </div>
+                        <TriangleDiagram spec={diagram} showLabels={labelsOn} />
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2">
                     {choices && choices.length > 0 ? (
@@ -739,5 +759,67 @@ function RightTriangle({ a, b, labels }: RightTriangleProps) {
                 <polyline points={`${leftX},${baseY} ${leftX + 12},${baseY} ${leftX + 12},${baseY - 12}`} fill="none" stroke="#111827" />
             </svg>
         </div>
+    )
+}
+
+type TriangleDiagramProps = { spec: NonNullable<GenerateResponse['diagram']>; showLabels: boolean }
+function TriangleDiagram({ spec, showLabels }: TriangleDiagramProps) {
+    // Simple construction: if points provided, use them; else place A at (40,160), B at (220,160), compute C by ASA or heuristic
+    const width = 280
+    const height = 200
+    let A: [number, number] = [40, 160]
+    let B: [number, number] = [220, 160]
+    let C: [number, number] = [130, 40]
+    if (spec.points && spec.points.A && spec.points.B && spec.points.C) {
+        A = spec.points.A
+        B = spec.points.B
+        C = spec.points.C
+    }
+    const labels = spec.labels || {}
+    const labelStyle: React.CSSProperties = { paintOrder: 'stroke', stroke: '#fff', strokeWidth: 4, strokeLinejoin: 'round' }
+    const drawAngleArc = (at: 'A'|'B'|'C', style: string, radius = 16) => {
+        const p = at === 'A' ? A : at === 'B' ? B : C
+        // Draw a simple quarter/arc marker; keep generic for now
+        const r = Math.max(10, Math.min(24, radius))
+        const d = `M ${p[0]+r} ${p[1]} A ${r} ${r} 0 0 0 ${p[0]} ${p[1]-r}`
+        return <path d={d} fill="none" stroke="#111827" />
+    }
+    const drawTicks = (side: 'a'|'b'|'c', count: 1|2|3) => {
+        // sides: a=BC, b=AC, c=AB
+        const mid = (P: [number, number], Q: [number, number]) => [(P[0]+Q[0])/2, (P[1]+Q[1])/2] as [number, number]
+        const perp = (P: [number, number], Q: [number, number], len: number) => {
+            const dx = Q[0]-P[0], dy = Q[1]-P[1]
+            const L = Math.hypot(dx, dy) || 1
+            return [-dy/ L * len, dx/ L * len] as [number, number]
+        }
+        const seg = side === 'a' ? [B, C] : side === 'b' ? [A, C] : [A, B]
+        const m = mid(seg[0], seg[1])
+        const off = perp(seg[0], seg[1], 6)
+        const lines = [] as JSX.Element[]
+        for (let i=0;i<count;i++) {
+            const shift = (i - (count-1)/2) * 6
+            const p1: [number, number] = [m[0] - off[0] + shift, m[1] - off[1] + shift]
+            const p2: [number, number] = [m[0] + off[0] + shift, m[1] + off[1] + shift]
+            lines.push(<line key={`${side}-${i}`} x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} stroke="#111827" />)
+        }
+        return lines
+    }
+    return (
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
+            <polygon points={`${A[0]},${A[1]} ${B[0]},${B[1]} ${C[0]},${C[1]}`} fill="#eef2ff" stroke="#111827" />
+            {spec.angleMarkers?.map((m, i) => (
+                <g key={`am-${i}`}>{drawAngleArc(m.at as any, String(m.style), Number(m.radius) || 16)}</g>
+            ))}
+            {spec.sideTicks?.map((t, i) => (
+                <g key={`t-${i}`}>{drawTicks(t.side as any, Math.max(1, Math.min(3, Number(t.count) || 1)) as 1|2|3)}</g>
+            ))}
+            {showLabels && (
+                <>
+                    <text x={A[0]-8} y={A[1]+16} fontSize="14" fill="#111827" style={labelStyle}>{labels.A ?? 'A'}</text>
+                    <text x={B[0]+6} y={B[1]+16} fontSize="14" fill="#111827" style={labelStyle}>{labels.B ?? 'B'}</text>
+                    <text x={C[0]-6} y={C[1]-8} fontSize="14" fill="#111827" style={labelStyle}>{labels.C ?? 'C'}</text>
+                </>
+            )}
+        </svg>
     )
 }

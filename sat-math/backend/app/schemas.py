@@ -20,11 +20,20 @@ class GenerateResponse(BaseModel):
 
 
 class DiagramSpec(BaseModel):
-    type: str  # e.g., "right_triangle"
+    type: str  # e.g., "right_triangle", "triangle"
+    # Right triangle legacy fields
     a: Optional[int] = None
     b: Optional[int] = None
     c: Optional[int] = None
     labels: Optional[Dict[str, str]] = None
+    # Generic triangle support
+    points: Optional[Dict[str, Tuple[float, float]]] = None  # A,B,C -> (x,y)
+    angleMarkers: Optional[List[Dict[str, object]]] = None  # {at, style,
+    # radius}
+    sideTicks: Optional[List[Dict[str, object]]] = None  # {side, count}
+    showLabels: Optional[bool] = None
+    # Triangle definition parameters (e.g., mode + values)
+    triangle: Optional[Dict[str, object]] = None
 
 
 class GradeRequest(BaseModel):

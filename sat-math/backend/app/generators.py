@@ -597,6 +597,18 @@ def generate_triangle_interior_angle(seed: int) -> GeneratedItem:
         "Sum of interior angles: A + B + C = 180^\\circ",
         "So C = " + f"180 - {a} - {b} = {c}^\\circ",
     ]
+    # Triangle diagram spec (ASA) with angle markers and side ticks
+    diag = {
+        "type": "triangle",
+        "triangle": {"mode": "ASA", "A": a, "B": b, "C": c},
+        "angleMarkers": [
+            {"at": "A", "style": "single", "radius": 18},
+            {"at": "B", "style": "single", "radius": 18},
+        ],
+        "sideTicks": [{"side": "c", "count": 2}],
+        "showLabels": True,
+        "labels": {"A": f"{a}°", "B": f"{b}°", "C": "?"},
+    }
     return GeneratedItem(
         domain="Geometry",
         skill="triangle_angle",
@@ -605,7 +617,7 @@ def generate_triangle_interior_angle(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(c),
         explanation_steps=steps,
-        diagram=None,
+        diagram=diag,
     )
 
 
