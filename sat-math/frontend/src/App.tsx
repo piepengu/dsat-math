@@ -38,10 +38,10 @@ type GenerateResponse = {
         labels?: Record<string, string>
         // generic triangle
         points?: Record<string, [number, number]>
-        angleMarkers?: Array<{ at: 'A'|'B'|'C'; style: 'right'|'single'|'double'|'triple'; radius?: number }>
-        sideTicks?: Array<{ side: 'a'|'b'|'c'; count: 1|2|3 }>
+        angleMarkers?: Array<{ at: 'A' | 'B' | 'C'; style: 'right' | 'single' | 'double' | 'triple'; radius?: number }>
+        sideTicks?: Array<{ side: 'a' | 'b' | 'c'; count: 1 | 2 | 3 }>
         showLabels?: boolean
-        triangle?: { mode: 'SSS'|'SAS'|'ASA'; A?: number; B?: number; C?: number; a?: number; b?: number; c?: number }
+        triangle?: { mode: 'SSS' | 'SAS' | 'ASA'; A?: number; B?: number; C?: number; a?: number; b?: number; c?: number }
     } | null
 }
 
@@ -341,7 +341,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return (
+  return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
@@ -522,10 +522,7 @@ function App() {
                     <div className="text-sm text-gray-600 mb-2">Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s</div>
                 )}
 
-                {diagram && diagram.type === 'right_triangle' && (
-                    <RightTriangle a={diagram.a || 0} b={diagram.b || 0} c={diagram.c || 0} labels={diagram.labels || {}} />
-                )}
-                {diagram && diagram.type === 'triangle' && (
+                {diagram && (
                     <div className="mb-3">
                         <div className="flex items-center gap-3 mb-2">
                             <label className="text-sm text-gray-700 flex items-center gap-2">
@@ -538,7 +535,18 @@ function App() {
                                 Show labels
                             </label>
                         </div>
-                        <TriangleDiagram spec={diagram} showLabels={labelsOn} />
+                        {diagram.type === 'right_triangle' && (
+                            <RightTriangle
+                                a={diagram.a || 0}
+                                b={diagram.b || 0}
+                                c={diagram.c || 0}
+                                labels={diagram.labels || {}}
+                                showLabels={labelsOn}
+                            />
+                        )}
+                        {diagram.type === 'triangle' && (
+                            <TriangleDiagram spec={diagram} showLabels={labelsOn} />
+                        )}
                     </div>
                 )}
 
@@ -664,7 +672,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-                    </div>
+      </div>
                 )}
 
                 <div className="mt-4">
@@ -688,7 +696,7 @@ function App() {
                         }}
                     >
                         My Stats
-                    </button>
+        </button>
                     {stats && (
                         <table className="w-full mt-2 border-collapse">
                             <thead>
@@ -715,14 +723,14 @@ function App() {
                     )}
                 </div>
             </div>
-        </div>
-    )
+      </div>
+  )
 }
 
 export default App
 
-type RightTriangleProps = { a: number; b: number; c: number; labels: Record<string, string> }
-function RightTriangle({ a, b, labels }: RightTriangleProps) {
+type RightTriangleProps = { a: number; b: number; c: number; labels: Record<string, string>; showLabels?: boolean }
+function RightTriangle({ a, b, labels, showLabels = true }: RightTriangleProps) {
     const maxSide = Math.max(a, b)
     const scale = maxSide > 0 ? 180 / maxSide : 1
     const ax = a * scale
@@ -747,15 +755,19 @@ function RightTriangle({ a, b, labels }: RightTriangleProps) {
         <div className="mb-3">
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
                 <polygon points={`${leftX},${baseY} ${hypX2},${baseY} ${leftX},${hypY1}`} fill="#eef2ff" stroke="#111827" />
-                <text x={leftX + ax / 2} y={baseY - 6} textAnchor="middle" fontSize="14" fill="#111827" style={labelStyle}>
-                    {labels.a ?? 'a'}
-                </text>
-                <text x={leftX + 10} y={hypY1 + by / 2} textAnchor="start" fontSize="14" fill="#111827" style={labelStyle}>
-                    {labels.b ?? 'b'}
-                </text>
-                <text x={midHX - 6} y={midHY - 6} fontSize="14" fill="#111827" style={labelStyle}>
-                    {labels.c ?? 'c'}
-                </text>
+                {showLabels && (
+                    <>
+                        <text x={leftX + ax / 2} y={baseY - 6} textAnchor="middle" fontSize="14" fill="#111827" style={labelStyle}>
+                            {labels.a ?? 'a'}
+                        </text>
+                        <text x={leftX + 10} y={hypY1 + by / 2} textAnchor="start" fontSize="14" fill="#111827" style={labelStyle}>
+                            {labels.b ?? 'b'}
+                        </text>
+                        <text x={midHX - 6} y={midHY - 6} fontSize="14" fill="#111827" style={labelStyle}>
+                            {labels.c ?? 'c'}
+                        </text>
+                    </>
+                )}
                 <polyline points={`${leftX},${baseY} ${leftX + 12},${baseY} ${leftX + 12},${baseY - 12}`} fill="none" stroke="#111827" />
             </svg>
         </div>
@@ -777,27 +789,27 @@ function TriangleDiagram({ spec, showLabels }: TriangleDiagramProps) {
     }
     const labels = spec.labels || {}
     const labelStyle: React.CSSProperties = { paintOrder: 'stroke', stroke: '#fff', strokeWidth: 4, strokeLinejoin: 'round' }
-    const drawAngleArc = (at: 'A'|'B'|'C', style: string, radius = 16) => {
+    const drawAngleArc = (at: 'A' | 'B' | 'C', style: string, radius = 16) => {
         const p = at === 'A' ? A : at === 'B' ? B : C
         // Draw a simple quarter/arc marker; keep generic for now
         const r = Math.max(10, Math.min(24, radius))
-        const d = `M ${p[0]+r} ${p[1]} A ${r} ${r} 0 0 0 ${p[0]} ${p[1]-r}`
+        const d = `M ${p[0] + r} ${p[1]} A ${r} ${r} 0 0 0 ${p[0]} ${p[1] - r}`
         return <path d={d} fill="none" stroke="#111827" />
     }
-    const drawTicks = (side: 'a'|'b'|'c', count: 1|2|3) => {
+    const drawTicks = (side: 'a' | 'b' | 'c', count: 1 | 2 | 3) => {
         // sides: a=BC, b=AC, c=AB
-        const mid = (P: [number, number], Q: [number, number]) => [(P[0]+Q[0])/2, (P[1]+Q[1])/2] as [number, number]
+        const mid = (P: [number, number], Q: [number, number]) => [(P[0] + Q[0]) / 2, (P[1] + Q[1]) / 2] as [number, number]
         const perp = (P: [number, number], Q: [number, number], len: number) => {
-            const dx = Q[0]-P[0], dy = Q[1]-P[1]
+            const dx = Q[0] - P[0], dy = Q[1] - P[1]
             const L = Math.hypot(dx, dy) || 1
-            return [-dy/ L * len, dx/ L * len] as [number, number]
+            return [-dy / L * len, dx / L * len] as [number, number]
         }
         const seg = side === 'a' ? [B, C] : side === 'b' ? [A, C] : [A, B]
         const m = mid(seg[0], seg[1])
         const off = perp(seg[0], seg[1], 6)
         const lines = [] as JSX.Element[]
-        for (let i=0;i<count;i++) {
-            const shift = (i - (count-1)/2) * 6
+        for (let i = 0; i < count; i++) {
+            const shift = (i - (count - 1) / 2) * 6
             const p1: [number, number] = [m[0] - off[0] + shift, m[1] - off[1] + shift]
             const p2: [number, number] = [m[0] + off[0] + shift, m[1] + off[1] + shift]
             lines.push(<line key={`${side}-${i}`} x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} stroke="#111827" />)
@@ -811,13 +823,13 @@ function TriangleDiagram({ spec, showLabels }: TriangleDiagramProps) {
                 <g key={`am-${i}`}>{drawAngleArc(m.at as any, String(m.style), Number(m.radius) || 16)}</g>
             ))}
             {spec.sideTicks?.map((t, i) => (
-                <g key={`t-${i}`}>{drawTicks(t.side as any, Math.max(1, Math.min(3, Number(t.count) || 1)) as 1|2|3)}</g>
+                <g key={`t-${i}`}>{drawTicks(t.side as any, Math.max(1, Math.min(3, Number(t.count) || 1)) as 1 | 2 | 3)}</g>
             ))}
             {showLabels && (
                 <>
-                    <text x={A[0]-8} y={A[1]+16} fontSize="14" fill="#111827" style={labelStyle}>{labels.A ?? 'A'}</text>
-                    <text x={B[0]+6} y={B[1]+16} fontSize="14" fill="#111827" style={labelStyle}>{labels.B ?? 'B'}</text>
-                    <text x={C[0]-6} y={C[1]-8} fontSize="14" fill="#111827" style={labelStyle}>{labels.C ?? 'C'}</text>
+                    <text x={A[0] - 8} y={A[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.A ?? 'A'}</text>
+                    <text x={B[0] + 6} y={B[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.B ?? 'B'}</text>
+                    <text x={C[0] - 6} y={C[1] - 8} fontSize="14" fill="#111827" style={labelStyle}>{labels.C ?? 'C'}</text>
                 </>
             )}
         </svg>
