@@ -442,6 +442,62 @@ def grade_pythagorean_hypotenuse(
     return bool(is_equal), item.solution_str, item.explanation_steps
 
 
+# Re-add missing Pythagorean leg generator/grader
+def generate_pythagorean_leg(seed: int) -> GeneratedItem:
+    rng = random.Random(seed)
+    a, b, c = rng.choice(_TRIPLES)
+    k = rng.randint(1, 5)
+    leg_known = a * k
+    hyp = c * k
+    other_leg = b * k
+    prompt_latex = (
+        "\\text{In a right triangle, the hypotenuse is "
+        + str(hyp)
+        + " and one leg is "
+        + str(leg_known)
+        + ". Find the other leg.}"
+    )
+    steps: List[str] = [
+        "Use c^2 - a^2 = b^2: "
+        + f"{hyp}^2 - {leg_known}^2 = b^2",
+        "Compute: "
+        + f"{hyp**2} - {leg_known**2} = {hyp**2 - leg_known**2} = b^2",
+        "Take square root: " + f"b = {other_leg}",
+    ]
+    return GeneratedItem(
+        domain="Geometry",
+        skill="pythagorean_leg",
+        format="SPR",
+        seed=seed,
+        prompt_latex=prompt_latex,
+        solution_str=str(other_leg),
+        explanation_steps=steps,
+        diagram={
+            "type": "right_triangle",
+            "a": leg_known,
+            "b": other_leg,
+            "c": hyp,
+            "labels": {
+                "a": str(leg_known),
+                "b": "?",
+                "c": str(hyp),
+            },
+        },
+    )
+
+
+def grade_pythagorean_leg(
+    seed: int,
+    user_answer: str,
+) -> Tuple[bool, str, List[str]]:
+    item = generate_pythagorean_leg(seed)
+    try:
+        is_equal = sp.nsimplify(user_answer) == sp.nsimplify(item.solution_str)
+    except Exception:
+        is_equal = False
+    return bool(is_equal), item.solution_str, item.explanation_steps
+
+
 # -------------- New Templates: Geometry Areas / Angles --------------
 
 def generate_rectangle_area(seed: int) -> GeneratedItem:
