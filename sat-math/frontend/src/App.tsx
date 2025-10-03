@@ -62,7 +62,7 @@ type GenerateAIResponse = {
 }
 
 function App() {
-    const APP_BUILD = '765eeee'
+    const APP_BUILD = 'c25cf92'
     const [domain, setDomain] = useState<Domain>('Algebra')
     const [skill, setSkill] = useState<Skill>('linear_equation')
     const [seed, setSeed] = useState<number | null>(null)
