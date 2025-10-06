@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
 
 from .db import Base
 
