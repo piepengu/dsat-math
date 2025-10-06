@@ -759,28 +759,63 @@ function App() {
                         My Stats
                     </button>
                     {stats && (
-                        <table className="w-full mt-2 border-collapse">
-                            <thead>
-                                <tr className="border-b">
-                                    <th className="text-left p-2 text-gray-900">Skill</th>
-                                    <th className="text-right p-2 text-gray-900">Attempts</th>
-                                    <th className="text-right p-2 text-gray-900">Correct</th>
-                                    <th className="text-right p-2 text-gray-900">Accuracy</th>
-                                    <th className="text-right p-2 text-gray-900">Avg time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {Object.entries(stats).map(([sk, v]) => (
-                                    <tr key={sk} className="border-b last:border-0">
-                                        <td className="p-2">{sk}</td>
-                                        <td className="text-right p-2">{v.attempts}</td>
-                                        <td className="text-right p-2">{v.correct}</td>
-                                        <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
-                                        <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                        <>
+                            <table className="w-full mt-2 border-collapse">
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="text-left p-2 text-gray-900">Skill</th>
+                                        <th className="text-right p-2 text-gray-900">Attempts</th>
+                                        <th className="text-right p-2 text-gray-900">Correct</th>
+                                        <th className="text-right p-2 text-gray-900">Accuracy</th>
+                                        <th className="text-right p-2 text-gray-900">Avg time</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(stats)
+                                        .filter(([sk]) => !sk.startsWith('__'))
+                                        .map(([sk, v]) => (
+                                            <tr key={sk} className="border-b last:border-0">
+                                                <td className="p-2">{sk}</td>
+                                                <td className="text-right p-2">{v.attempts}</td>
+                                                <td className="text-right p-2">{v.correct}</td>
+                                                <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
+                                                <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+
+                            {/* Per-difficulty breakdown if provided by backend */}
+                            {Boolean((stats as any).__by_difficulty) && (
+                                <table className="w-full mt-4 border-collapse">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left p-2 text-gray-900">Skill</th>
+                                            <th className="text-left p-2 text-gray-900">Difficulty</th>
+                                            <th className="text-right p-2 text-gray-900">Attempts</th>
+                                            <th className="text-right p-2 text-gray-900">Correct</th>
+                                            <th className="text-right p-2 text-gray-900">Accuracy</th>
+                                            <th className="text-right p-2 text-gray-900">Avg time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries((stats as any).__by_difficulty as Record<string, Record<string, any>>)
+                                            .flatMap(([sk, diffMap]) =>
+                                                Object.entries(diffMap).map(([diff, v]) => (
+                                                    <tr key={`${sk}-${diff}`} className="border-b last:border-0">
+                                                        <td className="p-2">{sk}</td>
+                                                        <td className="p-2 capitalize">{diff}</td>
+                                                        <td className="text-right p-2">{(v as any).attempts}</td>
+                                                        <td className="text-right p-2">{(v as any).correct}</td>
+                                                        <td className="text-right p-2">{Math.round(((v as any).accuracy || 0) * 100)}%</td>
+                                                        <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                    </tbody>
+                                </table>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
