@@ -57,6 +57,8 @@ from .schemas import (
     GradeResponse,
     NextRequest,
     NextResponse,
+    ResetStatsRequest,
+    ResetStatsResponse,
 )
 
 try:
@@ -386,7 +388,7 @@ def stats(
         total = int(n or 0)
         correct = int(n_correct or 0)
         acc = (correct / total) if total else 0.0
-        key = (src or "unknown")
+        key = src or "unknown"
         by_src[skill][key] = {
             "attempts": total,
             "correct": correct,
@@ -401,6 +403,20 @@ def stats(
 def estimate(req: EstimateRequest):
     score, ci, p_mean = estimate_math_sat(req.correct, req.total)
     return EstimateResponse(score=score, ci68=ci, p_mean=p_mean)
+
+
+@app.post("/reset_stats", response_model=ResetStatsResponse)
+def reset_stats(req: ResetStatsRequest, db: Session = Depends(get_db)):
+    q = db.query(Attempt).filter(Attempt.user_id == req.user_id)
+    if req.domain:
+        q = q.filter(Attempt.domain == req.domain)
+    if req.skill:
+        q = q.filter(Attempt.skill == req.skill)
+    # Count first, then delete
+    to_delete = q.count()
+    q.delete(synchronize_session=False)
+    db.commit()
+    return ResetStatsResponse(ok=True, deleted=int(to_delete))
 
 
 @app.post("/next", response_model=NextResponse)

@@ -756,6 +756,30 @@ function App() {
                     >
                         My Stats
                     </button>
+                    <button
+                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                        disabled={loading || !userId}
+                        onClick={async () => {
+                            if (!userId) return
+                            setLoading(true)
+                            try {
+                                await axios.post(`${apiBase}/reset_stats`, { user_id: userId })
+                                // Refresh stats after reset
+                                const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
+                                    `${apiBase}/stats`,
+                                    { params: { user_id: userId } }
+                                )
+                                setStats(resp.data)
+                            } catch (e: any) {
+                                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                setLastError(msg)
+                            } finally {
+                                setLoading(false)
+                            }
+                        }}
+                    >
+                        Reset my stats
+                    </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -842,8 +866,8 @@ function App() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {Object.entries((stats as any).__by_source as Record<string, Record<string, any>>) 
-                                            .flatMap(([sk, srcMap]) => 
+                                        {Object.entries((stats as any).__by_source as Record<string, Record<string, any>>)
+                                            .flatMap(([sk, srcMap]) =>
                                                 Object.entries(srcMap).map(([src, v]) => (
                                                     <tr key={`${sk}-${src}`} className="border-b last:border-0">
                                                         <td className="p-2">{sk}</td>

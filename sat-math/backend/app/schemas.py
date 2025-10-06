@@ -123,3 +123,14 @@ class NextResponse(BaseModel):
     domain: Optional[str] = None
     skill: Optional[str] = None
     difficulty: str
+
+
+class ResetStatsRequest(BaseModel):
+    user_id: str
+    domain: Optional[str] = None
+    skill: Optional[str] = None
+
+
+class ResetStatsResponse(BaseModel):
+    ok: bool
+    deleted: int
