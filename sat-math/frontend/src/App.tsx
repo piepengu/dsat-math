@@ -313,6 +313,7 @@ function App() {
                         correct_answer: correctAnswer,
                         seed: -1,
                         time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
+                        difficulty,
                     })
                 } catch (e) {
                     // ignore logging errors
@@ -332,6 +333,7 @@ function App() {
                 }
                 if (startTs) payload.time_ms = Math.max(0, Date.now() - startTs)
                 payload.source = useAI ? 'ai' : 'template'
+                payload.difficulty = difficulty
                 const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
                 setResult(resp.data)
                 if (inSession) setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
@@ -350,7 +352,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
@@ -701,7 +703,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -725,7 +727,7 @@ function App() {
                         }}
                     >
                         My Stats
-        </button>
+                    </button>
                     {stats && (
                         <table className="w-full mt-2 border-collapse">
                             <thead>
@@ -752,8 +754,8 @@ function App() {
                     )}
                 </div>
             </div>
-      </div>
-  )
+        </div>
+    )
 }
 
 export default App

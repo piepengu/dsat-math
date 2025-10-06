@@ -19,3 +19,4 @@ class Attempt(Base):
     source = Column(String, nullable=True)  # 'ai' | 'template'
     time_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=True)
+    difficulty = Column(String, nullable=True)  # 'easy' | 'medium' | 'hard'

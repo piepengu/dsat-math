@@ -46,6 +46,7 @@ class GradeRequest(BaseModel):
     selected_choice_index: Optional[int] = None
     time_ms: Optional[int] = None
     source: Optional[str] = None  # 'ai' | 'template'
+    difficulty: Optional[str] = Field(default=None)
 
 
 class GradeResponse(BaseModel):
@@ -66,6 +67,7 @@ class AttemptOut(BaseModel):
     correct_answer: str
     source: Optional[str] = None
     time_ms: Optional[int] = None
+    difficulty: Optional[str] = None
 
 
 class EstimateRequest(BaseModel):
@@ -103,6 +105,7 @@ class AttemptAIRequest(BaseModel):
     correct_answer: Optional[str] = None
     seed: Optional[int] = None
     time_ms: Optional[int] = None
+    difficulty: Optional[str] = None
 
 
 class AttemptAIResponse(BaseModel):
