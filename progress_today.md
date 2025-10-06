@@ -260,3 +260,29 @@ Planned for tomorrow (2025-10-06)
 - Review mode: list missed questions post‑session with “Retry”.
 - Diagram v2 polish: angle/tick styles and coordinate triangles; check label contrast.
 - Deployment hygiene: move Pages fully to Actions workflow and ensure cache‑busting assets.
+
+Updates (additional, 2025-10-05)
+- Backend
+  - Added POST `/reset_stats` to clear attempts for a `user_id` (optional domain/skill filters).
+  - Extended `/stats` with `__by_source` (AI vs template breakdown) alongside `__by_difficulty`.
+  - Guardrail logging enabled in AI path (JSON parse/validation/unavailable) for observability.
+  - Added PSD `proportion` AI fallback and included it in numeric validation.
+- Frontend
+  - Adaptive mode: toggle added; auto-calls `/next`; disables manual Difficulty; indicator shows “Adaptive: <level>”.
+  - Review mode v1: tracks missed questions during a session; post-session list with Retry/Clear.
+  - My Stats: per-difficulty table (toggle) and AI vs template breakdown table.
+  - “Reset my stats” button added; calls `/reset_stats` then refreshes stats.
+  - Removed yellow debug banners and static build marker; title styled blue.
+- CI/CD & Pages
+  - Fixed Pages workflow: shallow checkout, submodules disabled; added `docs/.nojekyll`.
+  - Cleaned `docs/index.html` and `docs/404.html`; verified deploy from master:/docs.
+
+End of day notes (2025-10-05, final)
+- Site loads from GitHub Pages; banner removed; Adaptive/Review modes and new Stats views working after redeploy + hard refresh.
+
+Planned next (2025-10-06, updated)
+- Adaptive tuning: per-skill time thresholds; soften oscillations; add a “Reset adaptation” control.
+- Stats 2.1 UI: compact source/difficulty toggles; add simple 7/30‑day trend badges.
+- Guardrails v2: stricter schema length/range caps; log counts to a simple `/health` debug or log.
+- Diagram v2: add more angle/tick styles and coordinate triangles; verify label contrast.
+- Optional: “Formula sheet” static page and header link.
