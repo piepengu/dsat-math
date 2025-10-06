@@ -3,6 +3,7 @@ import os
 import random
 import re
 from typing import List, Optional
+import logging
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,6 +88,8 @@ app.add_middleware(
 
 
 Base.metadata.create_all(bind=engine)
+_log = logging.getLogger("app.guardrails")
+
 
 # Lightweight migration for new analytics columns on SQLite
 try:
@@ -370,6 +373,8 @@ def stats(
 def estimate(req: EstimateRequest):
     score, ci, p_mean = estimate_math_sat(req.correct, req.total)
     return EstimateResponse(score=score, ci68=ci, p_mean=p_mean)
+
+
 @app.post("/next", response_model=NextResponse)
 def next_item(req: NextRequest, db: Session = Depends(get_db)):
     # Simple rule engine v1: default medium; bump up on 2-correct and fast; down on wrong or two slow
@@ -668,10 +673,22 @@ def generate_ai(req: GenerateAIRequest):
 
     # If AI is unavailable, immediately return fallback
     if not _HAS_GENAI:
+        try:
+            _log.warning("ai_unavailable_fallback domain=%s skill=%s", req.domain, req.skill)
+        except Exception:
+            pass
         return _fallback_mc()
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
+        try:
+            _log.warning(
+                "no_api_key_fallback domain=%s skill=%s",
+                req.domain,
+                req.skill,
+            )
+        except Exception:
+            pass
         return _fallback_mc()
 
     genai.configure(api_key=api_key)
@@ -719,6 +736,14 @@ def generate_ai(req: GenerateAIRequest):
                 data = json.loads(text)
             else:
                 # Unrecoverable JSON — fallback
+                try:
+                    _log.warning(
+                        "json_parse_fallback domain=%s skill=%s",
+                        req.domain,
+                        req.skill,
+                    )
+                except Exception:
+                    pass
                 return _fallback_mc()
 
         # Extract fields
@@ -817,7 +842,14 @@ def generate_ai(req: GenerateAIRequest):
                 diagram_out = None
 
         if not valid:
-            # guardrail fallback
+            try:
+                _log.warning(
+                    "validation_fallback domain=%s skill=%s",
+                    req.domain,
+                    req.skill,
+                )
+            except Exception:
+                pass
             return _fallback_mc()
 
         # Return validated AI item

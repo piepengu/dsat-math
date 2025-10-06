@@ -412,9 +412,10 @@ function App() {
                     <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
                         Difficulty:
                         <select
-                            className="border rounded px-2 py-1 bg-white"
+                            className="border rounded px-2 py-1 bg-white disabled:opacity-60"
                             value={difficulty}
                             onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+                            disabled={adaptive}
                         >
                             <option value="easy">Easy</option>
                             <option value="medium">Medium</option>
