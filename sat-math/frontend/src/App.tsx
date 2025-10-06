@@ -95,6 +95,7 @@ function App() {
     const [nowTs, setNowTs] = useState<number>(Date.now())
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
     const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
+    const [missed, setMissed] = useState<Array<{ domain: Domain; skill: Skill; difficulty: 'easy' | 'medium' | 'hard' }>>([])
 
     // Domain → Skill options shown in the second dropdown
     const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
@@ -318,6 +319,9 @@ function App() {
                     explanation_steps: explanation,
                 })
                 if (inSession) setNumCorrect((c) => c + (correct ? 1 : 0))
+                if (inSession && !correct) {
+                    setMissed((arr) => [...arr, { domain, skill, difficulty }])
+                }
                 // Persist AI attempt for stats
                 try {
                     await axios.post(`${apiBase}/attempt_ai`, {
@@ -353,6 +357,9 @@ function App() {
                 const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
                 setResult(resp.data)
                 if (inSession) setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
+                if (inSession && !resp.data.correct) {
+                    setMissed((arr) => [...arr, { domain, skill, difficulty }])
+                }
             }
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
@@ -368,7 +375,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return (
+  return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production */}
@@ -721,6 +728,43 @@ function App() {
                     </div>
                 )}
 
+                {!inSession && missed.length > 0 && (
+                    <div className="mt-6 p-4 border border-gray-200 rounded-md bg-white">
+                        <div className="font-semibold mb-2">Review missed questions</div>
+                        <ul className="space-y-2">
+                            {missed.map((m, idx) => (
+                                <li key={idx} className="flex items-center justify-between gap-3">
+                                    <div className="text-sm text-gray-700">
+                                        {m.domain} · {m.skill} · {m.difficulty}
+                                    </div>
+                                    <button
+                                        className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 text-sm"
+                                        onClick={async () => {
+                                            setDomain(m.domain)
+                                            setSkill(m.skill)
+                                            setDifficulty(m.difficulty)
+                                            setInSession(false)
+                                            setResult(null)
+                                            setAnswer('')
+                                            await loadQuestion()
+                                        }}
+                                    >
+                                        Retry
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="mt-3">
+                            <button
+                                className="inline-flex items-center px-3 py-1.5 rounded bg-slate-700 text-gray-800 hover:bg-slate-800 text-sm"
+                                onClick={() => setMissed([])}
+                            >
+                                Clear review list
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {estimate && (
                     <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
                         <div className="font-bold">Estimated SAT Math score</div>
@@ -731,7 +775,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-                    </div>
+      </div>
                 )}
 
                 <div className="mt-4">
@@ -779,7 +823,7 @@ function App() {
                         }}
                     >
                         Reset my stats
-                    </button>
+        </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -793,7 +837,7 @@ function App() {
                                     />
                                     Show per-difficulty
                                 </label>
-                            </div>
+      </div>
                             {!showByDifficulty && (
                                 <table className="w-full mt-2 border-collapse">
                                     <thead>
@@ -887,7 +931,7 @@ function App() {
                 </div>
             </div>
         </div>
-    )
+  )
 }
 
 export default App
