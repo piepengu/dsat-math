@@ -94,6 +94,7 @@ function App() {
     const [startTs, setStartTs] = useState<number | null>(null)
     const [nowTs, setNowTs] = useState<number>(Date.now())
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
+    const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
 
     // Domain → Skill options shown in the second dropdown
     const skillOptions: Record<Domain, Array<{ value: Skill; label: string }>> = {
@@ -760,6 +761,19 @@ function App() {
                     </button>
                     {stats && (
                         <>
+                            <div className="flex items-center justify-between mt-2">
+                                <div className="font-semibold">My Stats</div>
+                                <label className="text-sm text-gray-700 flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        className="accent-indigo-600"
+                                        checked={showByDifficulty}
+                                        onChange={(e) => setShowByDifficulty(e.target.checked)}
+                                    />
+                                    Show per-difficulty
+                                </label>
+                            </div>
+                            {!showByDifficulty && (
                             <table className="w-full mt-2 border-collapse">
                                 <thead>
                                     <tr className="border-b">
@@ -784,9 +798,10 @@ function App() {
                                         ))}
                                 </tbody>
                             </table>
+                            )}
 
                             {/* Per-difficulty breakdown if provided by backend */}
-                            {Boolean((stats as any).__by_difficulty) && (
+                            {showByDifficulty && Boolean((stats as any).__by_difficulty) && (
                                 <table className="w-full mt-4 border-collapse">
                                     <thead>
                                         <tr className="border-b">
