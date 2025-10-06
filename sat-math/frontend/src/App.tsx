@@ -368,13 +368,10 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return (
+  return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
-                <div className="mb-2 p-2 text-xs rounded border bg-yellow-50 text-yellow-900">
-                    <div>API base: {apiBase || '(not set, using 127.0.0.1 fallback)'} · Build: {APP_BUILD}</div>
-                    {lastError && <div className="mt-1">Last error: {lastError}</div>}
-                </div>
+                {/* Debug banner removed for production */}
                 <h2 className="text-2xl font-semibold mb-3">DSAT Math Forge</h2>
                 <div className="flex flex-wrap gap-2 items-center mb-3">
                     <select
@@ -734,7 +731,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-                    </div>
+      </div>
                 )}
 
                 <div className="mt-4">
@@ -758,7 +755,7 @@ function App() {
                         }}
                     >
                         My Stats
-                    </button>
+        </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -772,32 +769,32 @@ function App() {
                                     />
                                     Show per-difficulty
                                 </label>
-                            </div>
+      </div>
                             {!showByDifficulty && (
-                            <table className="w-full mt-2 border-collapse">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left p-2 text-gray-900">Skill</th>
-                                        <th className="text-right p-2 text-gray-900">Attempts</th>
-                                        <th className="text-right p-2 text-gray-900">Correct</th>
-                                        <th className="text-right p-2 text-gray-900">Accuracy</th>
-                                        <th className="text-right p-2 text-gray-900">Avg time</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.entries(stats)
-                                        .filter(([sk]) => !sk.startsWith('__'))
-                                        .map(([sk, v]) => (
-                                            <tr key={sk} className="border-b last:border-0">
-                                                <td className="p-2">{sk}</td>
-                                                <td className="text-right p-2">{v.attempts}</td>
-                                                <td className="text-right p-2">{v.correct}</td>
-                                                <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
-                                                <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
-                                            </tr>
-                                        ))}
-                                </tbody>
-                            </table>
+                                <table className="w-full mt-2 border-collapse">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left p-2 text-gray-900">Skill</th>
+                                            <th className="text-right p-2 text-gray-900">Attempts</th>
+                                            <th className="text-right p-2 text-gray-900">Correct</th>
+                                            <th className="text-right p-2 text-gray-900">Accuracy</th>
+                                            <th className="text-right p-2 text-gray-900">Avg time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(stats)
+                                            .filter(([sk]) => !sk.startsWith('__'))
+                                            .map(([sk, v]) => (
+                                                <tr key={sk} className="border-b last:border-0">
+                                                    <td className="p-2">{sk}</td>
+                                                    <td className="text-right p-2">{v.attempts}</td>
+                                                    <td className="text-right p-2">{v.correct}</td>
+                                                    <td className="text-right p-2">{Math.round(v.accuracy * 100)}%</td>
+                                                    <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
                             )}
 
                             {/* Per-difficulty breakdown if provided by backend */}
@@ -835,7 +832,7 @@ function App() {
                 </div>
             </div>
         </div>
-    )
+  )
 }
 
 export default App
