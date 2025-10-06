@@ -231,3 +231,32 @@ Planned for tomorrow (additions for 2025-10-04)
 - Implement logging for guardrail-triggered fallbacks in the backend for observability.
 - Start Adaptive v1: add `difficulty` to attempts and wire it through models and UI.
 - Extend `/stats` to include avg time by skill+difficulty and include AI attempts in averages.
+
+Updates (2025-10-06)
+- Backend
+  - Added lightweight auto‑migration and model field for `difficulty` on `attempts`.
+  - Implemented rule‑based `POST /next` endpoint (v1 adaptive): selects Easy/Medium/Hard from the last two attempts and time.
+  - Extended `/stats` to include `__by_difficulty` breakdown with avg time per difficulty.
+  - Added guardrail fallback logging (JSON parse/validation/AI unavailable/no key) to `app.guardrails` logger.
+  - Added PSD `proportion` AI fallback and included `proportion` in numeric validation.
+- Frontend
+  - Added “Adaptive mode” toggle; when on, calls `/next` before each question and disables the manual Difficulty selector.
+  - Display “Adaptive: <level>” indicator during practice.
+  - My Stats: added a per‑difficulty table and a “Show per‑difficulty” toggle (no duplicate tables).
+  - Removed the in‑app yellow debug banner and the static yellow build marker from `index.html`.
+- Deploy
+  - Pushed all changes; requires Render backend redeploy and Pages rebuild; advise hard refresh/incognito after publish.
+
+End of day notes (2025-10-06)
+- Adaptive v1 is live (server + client). Difficulty is persisted and used for analytics.
+- Guardrail fallbacks are now logged server‑side for observability.
+- Stats page can show per‑difficulty breakdown on demand.
+- Yellow debug markers removed from UI.
+
+Planned for tomorrow (2025-10-07)
+- Verify production: Adaptive mode transitions, per‑difficulty stats, and no yellow markers.
+- Tune adaptive rules per skill (time thresholds) and reduce oscillation; add “Reset adaptation”.
+- Stats 2.1: surface AI vs template breakdown; consider 7/30‑day trend lines.
+- Review mode: list missed questions post‑session with “Retry”.
+- Diagram v2 polish: angle/tick styles and coordinate triangles; check label contrast.
+- Deployment hygiene: move Pages fully to Actions workflow and ensure cache‑busting assets.
