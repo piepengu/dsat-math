@@ -375,11 +375,11 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production */}
-                <h2 className="text-2xl font-semibold mb-3">DSAT Math Forge</h2>
+                <h2 className="text-2xl font-semibold mb-3 text-blue-600">DSAT Math Forge</h2>
                 <div className="flex flex-wrap gap-2 items-center mb-3">
                     <select
                         className="border rounded px-3 py-2 bg-white"
@@ -775,7 +775,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -823,7 +823,7 @@ function App() {
                         }}
                     >
                         Reset my stats
-        </button>
+                    </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -837,7 +837,7 @@ function App() {
                                     />
                                     Show per-difficulty
                                 </label>
-      </div>
+                            </div>
                             {!showByDifficulty && (
                                 <table className="w-full mt-2 border-collapse">
                                     <thead>
@@ -931,7 +931,7 @@ function App() {
                 </div>
             </div>
         </div>
-  )
+    )
 }
 
 export default App
