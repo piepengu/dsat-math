@@ -232,7 +232,7 @@ Planned for tomorrow (additions for 2025-10-04)
 - Start Adaptive v1: add `difficulty` to attempts and wire it through models and UI.
 - Extend `/stats` to include avg time by skill+difficulty and include AI attempts in averages.
 
-Updates (2025-10-06)
+Updates (2025-10-05)
 - Backend
   - Added lightweight auto‑migration and model field for `difficulty` on `attempts`.
   - Implemented rule‑based `POST /next` endpoint (v1 adaptive): selects Easy/Medium/Hard from the last two attempts and time.
@@ -247,13 +247,13 @@ Updates (2025-10-06)
 - Deploy
   - Pushed all changes; requires Render backend redeploy and Pages rebuild; advise hard refresh/incognito after publish.
 
-End of day notes (2025-10-06)
+End of day notes (2025-10-05)
 - Adaptive v1 is live (server + client). Difficulty is persisted and used for analytics.
 - Guardrail fallbacks are now logged server‑side for observability.
 - Stats page can show per‑difficulty breakdown on demand.
 - Yellow debug markers removed from UI.
 
-Planned for tomorrow (2025-10-07)
+Planned for tomorrow (2025-10-06)
 - Verify production: Adaptive mode transitions, per‑difficulty stats, and no yellow markers.
 - Tune adaptive rules per skill (time thresholds) and reduce oscillation; add “Reset adaptation”.
 - Stats 2.1: surface AI vs template breakdown; consider 7/30‑day trend lines.
