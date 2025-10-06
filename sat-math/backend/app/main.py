@@ -54,6 +54,8 @@ from .schemas import (
     GenerateResponse,
     GradeRequest,
     GradeResponse,
+    NextRequest,
+    NextResponse,
 )
 
 try:
@@ -368,6 +370,29 @@ def stats(
 def estimate(req: EstimateRequest):
     score, ci, p_mean = estimate_math_sat(req.correct, req.total)
     return EstimateResponse(score=score, ci68=ci, p_mean=p_mean)
+@app.post("/next", response_model=NextResponse)
+def next_item(req: NextRequest, db: Session = Depends(get_db)):
+    # Simple rule engine v1: default medium; bump up on 2-correct and fast; down on wrong or two slow
+    target_domain = req.domain
+    target_skill = req.skill
+    q = db.query(Attempt).filter(Attempt.user_id == req.user_id)
+    if target_domain:
+        q = q.filter(Attempt.domain == target_domain)
+    if target_skill:
+        q = q.filter(Attempt.skill == target_skill)
+    recent = q.order_by(Attempt.id.desc()).limit(5).all()
+    # Defaults
+    difficulty = "medium"
+    # Compute simple signals
+    last_two = recent[:2]
+    two_correct = len(last_two) == 2 and all(bool(r.correct) for r in last_two)
+    slow_count = sum(1 for r in last_two if (r.time_ms or 0) > 20000)
+    any_wrong = any(not bool(r.correct) for r in last_two)
+    if two_correct and slow_count == 0:
+        difficulty = "hard"
+    if any_wrong or slow_count >= 2:
+        difficulty = "easy"
+    return NextResponse(domain=target_domain, skill=target_skill, difficulty=difficulty)
 
 
 @app.post("/attempt_ai", response_model=AttemptAIResponse)

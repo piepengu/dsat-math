@@ -111,3 +111,15 @@ class AttemptAIRequest(BaseModel):
 class AttemptAIResponse(BaseModel):
     ok: bool
     correct: bool
+
+
+class NextRequest(BaseModel):
+    user_id: str
+    domain: Optional[str] = None
+    skill: Optional[str] = None
+
+
+class NextResponse(BaseModel):
+    domain: Optional[str] = None
+    skill: Optional[str] = None
+    difficulty: str

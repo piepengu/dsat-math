@@ -84,6 +84,7 @@ function App() {
     const [stats, setStats] = useState<Record<string, { attempts: number; correct: number; accuracy: number }> | null>(null)
     const [lastError, setLastError] = useState<string | null>(null)
     const [useAI, setUseAI] = useState<boolean>(false)
+    const [adaptive, setAdaptive] = useState<boolean>(false)
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
@@ -239,6 +240,20 @@ function App() {
         setAiCorrectIndex(null)
         setAiExplanation(null)
         try {
+            // If adaptive mode is on, fetch next suggested difficulty
+            if (adaptive) {
+                try {
+                    const next = await axios.post<{ domain?: string; skill?: string; difficulty: 'easy' | 'medium' | 'hard' }>(
+                        `${apiBase}/next`,
+                        { user_id: userId || 'anonymous', domain, skill }
+                    )
+                    const d = next.data?.difficulty as 'easy' | 'medium' | 'hard'
+                    if (d) setDifficulty(d)
+                } catch {
+                    // ignore; fallback to current difficulty
+                }
+            }
+
             if (useAI) {
                 const resp = await axios.post<GenerateAIResponse>(`${apiBase}/generate_ai`, {
                     domain,
@@ -386,6 +401,15 @@ function App() {
                         Use AI
                     </label>
                     <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                        <input
+                            type="checkbox"
+                            className="accent-emerald-600"
+                            checked={adaptive}
+                            onChange={(e) => setAdaptive(e.target.checked)}
+                        />
+                        Adaptive mode
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
                         Difficulty:
                         <select
                             className="border rounded px-2 py-1 bg-white"
@@ -448,9 +472,14 @@ function App() {
                     >
                         Start session
                     </button>
-                    {inSession && (
+                    {(inSession || adaptive) && (
                         <div className="text-sm text-gray-600">
-                            Q {questionIdx + 1} / {sessionLen} · Correct: {numCorrect}
+                            {inSession && (
+                                <>Q {questionIdx + 1} / {sessionLen} · Correct: {numCorrect}</>
+                            )}
+                            {adaptive && (
+                                <span className="ml-2 text-emerald-700">Adaptive: {difficulty}</span>
+                            )}
                         </div>
                     )}
                 </div>
