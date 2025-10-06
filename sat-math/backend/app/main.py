@@ -1,9 +1,9 @@
 ﻿import json
+import logging
 import os
 import random
 import re
 from typing import List, Optional
-import logging
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -366,7 +366,35 @@ def stats(
             "accuracy": acc,
             "avg_time_s": float((avg_time or 0) / 1000.0),
         }
-    return {**out, "__by_difficulty": by_diff}
+    # per-source (ai vs template) aggregates
+    rows3 = (
+        db.query(
+            Attempt.skill,
+            Attempt.source,
+            func.count(Attempt.id),
+            func.sum(func.cast(Attempt.correct, Integer)),
+            func.avg(Attempt.time_ms),
+        )
+        .filter(Attempt.user_id == user_id)
+        .group_by(Attempt.skill, Attempt.source)
+        .all()
+    )
+    by_src: dict = {}
+    for skill, src, n, n_correct, avg_time in rows3:
+        if skill not in by_src:
+            by_src[skill] = {}
+        total = int(n or 0)
+        correct = int(n_correct or 0)
+        acc = (correct / total) if total else 0.0
+        key = (src or "unknown")
+        by_src[skill][key] = {
+            "attempts": total,
+            "correct": correct,
+            "accuracy": acc,
+            "avg_time_s": float((avg_time or 0) / 1000.0),
+        }
+
+    return {**out, "__by_difficulty": by_diff, "__by_source": by_src}
 
 
 @app.post("/estimate", response_model=EstimateResponse)
@@ -674,7 +702,9 @@ def generate_ai(req: GenerateAIRequest):
     # If AI is unavailable, immediately return fallback
     if not _HAS_GENAI:
         try:
-            _log.warning("ai_unavailable_fallback domain=%s skill=%s", req.domain, req.skill)
+            _log.warning(
+                "ai_unavailable_fallback domain=%s skill=%s", req.domain, req.skill
+            )
         except Exception:
             pass
         return _fallback_mc()

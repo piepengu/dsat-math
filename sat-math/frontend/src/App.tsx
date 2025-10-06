@@ -368,7 +368,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production */}
@@ -731,7 +731,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -755,7 +755,7 @@ function App() {
                         }}
                     >
                         My Stats
-        </button>
+                    </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -769,7 +769,7 @@ function App() {
                                     />
                                     Show per-difficulty
                                 </label>
-      </div>
+                            </div>
                             {!showByDifficulty && (
                                 <table className="w-full mt-2 border-collapse">
                                     <thead>
@@ -827,12 +827,43 @@ function App() {
                                     </tbody>
                                 </table>
                             )}
+
+                            {/* Per-source breakdown (AI vs template) */}
+                            {Boolean((stats as any).__by_source) && (
+                                <table className="w-full mt-4 border-collapse">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left p-2 text-gray-900">Skill</th>
+                                            <th className="text-left p-2 text-gray-900">Source</th>
+                                            <th className="text-right p-2 text-gray-900">Attempts</th>
+                                            <th className="text-right p-2 text-gray-900">Correct</th>
+                                            <th className="text-right p-2 text-gray-900">Accuracy</th>
+                                            <th className="text-right p-2 text-gray-900">Avg time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries((stats as any).__by_source as Record<string, Record<string, any>>) 
+                                            .flatMap(([sk, srcMap]) => 
+                                                Object.entries(srcMap).map(([src, v]) => (
+                                                    <tr key={`${sk}-${src}`} className="border-b last:border-0">
+                                                        <td className="p-2">{sk}</td>
+                                                        <td className="p-2 capitalize">{src}</td>
+                                                        <td className="text-right p-2">{(v as any).attempts}</td>
+                                                        <td className="text-right p-2">{(v as any).correct}</td>
+                                                        <td className="text-right p-2">{Math.round(((v as any).accuracy || 0) * 100)}%</td>
+                                                        <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                    </tbody>
+                                </table>
+                            )}
                         </>
                     )}
                 </div>
             </div>
         </div>
-  )
+    )
 }
 
 export default App
