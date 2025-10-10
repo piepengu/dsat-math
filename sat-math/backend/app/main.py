@@ -170,33 +170,55 @@ def generate_item(req: GenerateRequest):
         choices=getattr(item, "choices", None),
         diagram=getattr(item, "diagram", None),
         hints=base_hints or None,
+        explanation={
+            "concept": getattr(item, "concept", None),
+            "plan": getattr(item, "plan", None),
+            "quick_check": getattr(item, "quick_check", None),
+            "common_mistake": getattr(item, "common_mistake", None),
+        },
     )
 
 
 @app.post("/grade", response_model=GradeResponse)
 def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
+    item_meta = None
     if req.domain == "Algebra" and req.skill == "linear_equation":
         correct, sol, steps = grade_linear_equation(req.seed, req.user_answer)
+        from .generators import generate_linear_equation as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Algebra" and req.skill == "two_step_equation":
         correct, sol, steps = grade_two_step_equation(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_two_step_equation as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "PSD" and req.skill == "proportion":
         correct, sol, steps = grade_proportion(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_proportion as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Algebra" and req.skill == "linear_system_2x2":
         correct, sol, steps = grade_linear_system_2x2(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_linear_system_2x2 as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Advanced" and req.skill == "linear_system_3x3":
         correct, sol, steps = grade_linear_system_3x3(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_linear_system_3x3 as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Algebra" and req.skill == "linear_equation_mc":
         correct, sol, steps, why_sel = grade_linear_equation_mc(
             req.seed,
@@ -206,6 +228,9 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
                 else -1
             ),
         )
+        from .generators import generate_linear_equation_mc as _gen
+
+        item_meta = _gen(req.seed)
         # persist attempt below as usual, but include why on response
         user_id = req.user_id or "anonymous"
         db_attempt = Attempt(
@@ -227,40 +252,73 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             explanation_steps=steps,
             why_correct="It satisfies the equation.",
             why_incorrect_selected=None if correct else why_sel,
+            explanation={
+                "concept": getattr(item_meta, "concept", None),
+                "plan": getattr(item_meta, "plan", None),
+                "quick_check": getattr(item_meta, "quick_check", None),
+                "common_mistake": getattr(item_meta, "common_mistake", None),
+            },
         )
     elif req.domain == "Advanced" and req.skill == "quadratic_roots":
         correct, sol, steps = grade_quadratic_roots(req.seed, req.user_answer)
+        from .generators import generate_quadratic_roots as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Advanced" and req.skill == "exponential_solve":
         correct, sol, steps = grade_exponential_solve(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_exponential_solve as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Advanced" and req.skill == "rational_equation":
         correct, sol, steps = grade_rational_equation(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_rational_equation as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Geometry" and req.skill == "pythagorean_hypotenuse":
         correct, sol, steps = grade_pythagorean_hypotenuse(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_pythagorean_hypotenuse as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Geometry" and req.skill == "pythagorean_leg":
         correct, sol, steps = grade_pythagorean_leg(req.seed, req.user_answer)
+        from .generators import generate_pythagorean_leg as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Geometry" and req.skill == "rectangle_area":
         correct, sol, steps = grade_rectangle_area(req.seed, req.user_answer)
+        from .generators import generate_rectangle_area as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Geometry" and req.skill == "rectangle_perimeter":
         correct, sol, steps = grade_rectangle_perimeter(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_rectangle_perimeter as _gen
+
+        item_meta = _gen(req.seed)
     elif req.domain == "Geometry" and req.skill == "triangle_angle":
         correct, sol, steps = grade_triangle_interior_angle(
             req.seed,
             req.user_answer,
         )
+        from .generators import generate_triangle_interior_angle as _gen
+
+        item_meta = _gen(req.seed)
     else:
         correct, sol, steps = grade_linear_equation(req.seed, req.user_answer)
+        from .generators import generate_linear_equation as _gen
+
+        item_meta = _gen(req.seed)
 
     user_id = req.user_id or "anonymous"
     db_attempt = Attempt(
@@ -282,6 +340,12 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         correct_answer=str(sol),
         explanation_steps=steps,
         why_correct="It satisfies the equation.",
+        explanation={
+            "concept": getattr(item_meta, "concept", None),
+            "plan": getattr(item_meta, "plan", None),
+            "quick_check": getattr(item_meta, "quick_check", None),
+            "common_mistake": getattr(item_meta, "common_mistake", None),
+        },
     )
 
 

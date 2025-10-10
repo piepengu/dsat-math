@@ -52,6 +52,12 @@ type GradeResponse = {
     explanation_steps: string[]
     why_correct?: string
     why_incorrect_selected?: string
+    explanation?: {
+        concept?: string
+        plan?: string
+        quick_check?: string
+        common_mistake?: string
+    }
 }
 
 type GenerateAIResponse = {
@@ -374,7 +380,7 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production; keep a hidden error node to satisfy TS usage */}
@@ -720,11 +726,31 @@ function App() {
                             <div className="mt-2">
                                 <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
                                 <div className="font-semibold mt-2">Explanation</div>
+                                {result.explanation && (
+                                    <div className="mb-2 text-sm text-gray-800 space-y-1">
+                                        {result.explanation.concept && (
+                                            <div><span className="font-semibold">Concept:</span> {renderInlineMath(result.explanation.concept)}</div>
+                                        )}
+                                        {result.explanation.plan && (
+                                            <div><span className="font-semibold">Plan:</span> {renderInlineMath(result.explanation.plan)}</div>
+                                        )}
+                                    </div>
+                                )}
                                 <ol className="list-decimal list-inside space-y-1">
                                     {result.explanation_steps.map((s, i) => (
-                                        <li key={i}>{s}</li>
+                                        <li key={i}>{renderInlineMath(s)}</li>
                                     ))}
                                 </ol>
+                                {result.explanation && (
+                                    <div className="mt-2 text-sm text-gray-800 space-y-1">
+                                        {result.explanation.quick_check && (
+                                            <div><span className="font-semibold">Quick check:</span> {renderInlineMath(result.explanation.quick_check)}</div>
+                                        )}
+                                        {result.explanation.common_mistake && (
+                                            <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -777,7 +803,7 @@ function App() {
                         <div className="mt-2 text-sm text-gray-700">
                             Start another session or continue practicing individual questions.
                         </div>
-      </div>
+                    </div>
                 )}
 
                 <div className="mt-4">
@@ -825,7 +851,7 @@ function App() {
                         }}
                     >
                         Reset my stats
-        </button>
+                    </button>
                     {stats && (
                         <>
                             <div className="flex items-center justify-between mt-2">
@@ -839,7 +865,7 @@ function App() {
                                     />
                                     Show per-difficulty
                                 </label>
-      </div>
+                            </div>
                             {!showByDifficulty && (
                                 <table className="w-full mt-2 border-collapse">
                                     <thead>
@@ -933,7 +959,7 @@ function App() {
                 </div>
             </div>
         </div>
-  )
+    )
 }
 
 export default App

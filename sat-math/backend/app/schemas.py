@@ -18,6 +18,8 @@ class GenerateResponse(BaseModel):
     choices: Optional[List[str]] = None
     diagram: Optional["DiagramSpec"] = None
     hints: Optional[List[str]] = None
+    # Optional rich explanation (concept/plan/check/mistake)
+    explanation: Optional["Explanation"] = None
 
 
 class DiagramSpec(BaseModel):
@@ -55,6 +57,8 @@ class GradeResponse(BaseModel):
     explanation_steps: List[str]
     why_correct: Optional[str] = None
     why_incorrect_selected: Optional[str] = None
+    # New richer explanation payload (optional for backward compatibility)
+    explanation: Optional["Explanation"] = None
 
 
 class AttemptOut(BaseModel):
@@ -111,6 +115,13 @@ class AttemptAIRequest(BaseModel):
 class AttemptAIResponse(BaseModel):
     ok: bool
     correct: bool
+
+
+class Explanation(BaseModel):
+    concept: Optional[str] = None
+    plan: Optional[str] = None
+    quick_check: Optional[str] = None
+    common_mistake: Optional[str] = None
 
 
 class NextRequest(BaseModel):

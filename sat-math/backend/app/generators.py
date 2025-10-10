@@ -20,6 +20,11 @@ class GeneratedItem:
     why_incorrect: Optional[List[str]] = None
     # Optional diagram spec
     diagram: Optional[Dict[str, object]] = None
+    # Optional richer explanation fields
+    concept: Optional[str] = None
+    plan: Optional[str] = None
+    quick_check: Optional[str] = None
+    common_mistake: Optional[str] = None
 
 
 def generate_linear_equation(seed: int) -> GeneratedItem:
@@ -48,6 +53,10 @@ def generate_linear_equation(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(solution),
         explanation_steps=steps,
+        concept="Linear equation; distribute and isolate x",
+        plan=(f"Expand {a}(x{b:+}), then isolate x by inverse operations"),
+        quick_check=(f"Plug back: {a}({solution}{b:+}) = {a * (solution + b)} = {c}"),
+        common_mistake="Forgetting to distribute to both x and constant",
         diagram=None,
     )
 
@@ -96,14 +105,12 @@ def generate_linear_equation_mc(seed: int) -> GeneratedItem:
     for x in options:
         if x == sol_val:
             why_map.append(
-                "Correct — solves the equation after proper distribution/" "isolation."
+                "Correct — solves the equation after proper distribution/isolation."
             )
         elif x == d2:
             why_map.append("Sign error when moving terms across the equals sign.")
         elif x == d1:
-            why_map.append(
-                "Arithmetic slip (off-by-one/two) during add/" "subtract step."
-            )
+            why_map.append("Arithmetic slip (off-by-one/two) during add/subtract step.")
         else:
             why_map.append("Stopped early or misapplied division step.")
 
@@ -168,6 +175,10 @@ def generate_two_step_equation(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(int(root)),
         explanation_steps=steps,
+        concept="Two-step linear equation",
+        plan="Undo addition/subtraction, then undo multiplication",
+        quick_check=f"Check: {a}·({root}) {b:+} = {a*root + b} = {c}",
+        common_mistake="Dividing before moving the constant term",
         diagram=None,
     )
 
@@ -213,6 +224,10 @@ def generate_proportion(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(x_val),
         explanation_steps=steps,
+        concept="Proportion; solve by cross-multiplication",
+        plan="Cross-multiply, then isolate x",
+        quick_check=f"Plug back: {a}/{b} = {x_val}/{c}",
+        common_mistake="Multiplying only one side by the denominator",
         diagram=None,
     )
 
@@ -267,6 +282,12 @@ def generate_linear_system_2x2(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=f"{x0},{y0}",
         explanation_steps=steps,
+        concept="2×2 linear system",
+        plan="Eliminate one variable, then back-substitute",
+        quick_check=(
+            f"Verify: {a}({x0}) {b:+}({y0}) = {e} and " f"{c}({x0}) {d:+}({y0}) = {f}"
+        ),
+        common_mistake="Adding equations with mismatched coefficients",
         diagram=None,
     )
 
@@ -323,6 +344,10 @@ def generate_quadratic_roots(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=sol,
         explanation_steps=steps,
+        concept="Quadratic roots via factoring",
+        plan="Factor polynomial, set each factor to zero",
+        quick_check=f"Check a root in factored form gives 0; similarly for {r2}",
+        common_mistake="Forgetting both roots or mixing signs",
         diagram=None,
     )
 
@@ -371,6 +396,10 @@ def generate_exponential_solve(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(int(x0)),
         explanation_steps=steps,
+        concept="Exponential equation; isolate base and take logarithm",
+        plan=f"Isolate {b}^x, then apply log base {b}",
+        quick_check=f"Check: {a}·{b}^{x0} = {a*(b**x0)} = {c}",
+        common_mistake="Taking logs before isolating the exponential",
     )
 
 
@@ -416,6 +445,10 @@ def generate_pythagorean_hypotenuse(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(hyp),
         explanation_steps=steps,
+        concept="Right triangle; Pythagorean theorem",
+        plan="Square legs, add, then take square root",
+        quick_check=f"Triple scaled: {leg1},{leg2},{hyp}",
+        common_mistake="Adding legs instead of squaring then adding",
         diagram={
             "type": "right_triangle",
             "a": leg1,
@@ -466,6 +499,10 @@ def generate_pythagorean_leg(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(other_leg),
         explanation_steps=steps,
+        concept="Right triangle; find a leg using c^2 - a^2 = b^2",
+        plan="Square hypotenuse and known leg, subtract, take square root",
+        quick_check=f"Scaled triple: other leg = {other_leg}",
+        common_mistake="Subtracting in wrong order (a^2 - c^2)",
         diagram={
             "type": "right_triangle",
             "a": leg_known,
@@ -515,6 +552,10 @@ def generate_rectangle_area(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(area),
         explanation_steps=steps,
+        concept="Area of rectangle",
+        plan="Multiply width by height",
+        quick_check=f"Units: square units; {w}×{h} = {area}",
+        common_mistake="Adding sides instead of multiplying",
     )
 
 
@@ -554,6 +595,10 @@ def generate_rectangle_perimeter(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(perim),
         explanation_steps=steps,
+        concept="Perimeter of rectangle",
+        plan="Add width and height, multiply by 2",
+        quick_check=f"Units: linear; 2({w}+{h}) = {perim}",
+        common_mistake="Multiplying w·h instead of adding",
     )
 
 
@@ -608,6 +653,10 @@ def generate_triangle_interior_angle(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(c),
         explanation_steps=steps,
+        concept="Triangle interior angles sum to 180°",
+        plan="Subtract known angles from 180°",
+        quick_check=f"{a}+{b}+{c} = 180°",
+        common_mistake="Adding instead of subtracting from 180°",
         diagram=diag,
     )
 
@@ -669,6 +718,10 @@ def generate_linear_system_3x3(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=f"{x0},{y0},{z0}",
         explanation_steps=steps,
+        concept="3×3 linear system",
+        plan="Eliminate variables stepwise or use matrix inverse",
+        quick_check="Plug values satisfy all three equations",
+        common_mistake="Arithmetic errors when eliminating",
     )
 
 
@@ -721,6 +774,12 @@ def generate_rational_equation(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=str(int(x0)),
         explanation_steps=steps,
+        concept="Rational equation; clear denominators and solve quadratic",
+        plan=f"Multiply both sides by {a}x, expand, solve quadratic",
+        quick_check=(
+            f"Check x={x0} in original: {x0}/{a} + {a*x0}/{x0} = {x0//a} + {a}"
+        ),
+        common_mistake="Forgetting to check and discard extraneous solutions",
     )
 
 
@@ -763,6 +822,10 @@ def generate_psd_unit_rate(seed: int) -> GeneratedItem:
         prompt_latex=prompt_latex,
         solution_str=f"{rate:.2f}",
         explanation_steps=steps,
+        concept="Unit rate (cost per item)",
+        plan="Divide total cost by number of items",
+        quick_check=f"Estimate: about {(total_cost/items):.2f} seems reasonable",
+        common_mistake="Dividing items by cost instead of cost by items",
     )
 
 
