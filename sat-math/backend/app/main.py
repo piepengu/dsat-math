@@ -625,6 +625,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
+                    diagram=getattr(item, "diagram", None),
                     hints=(
                         item.explanation_steps[:2] if item.explanation_steps else None
                     ),
