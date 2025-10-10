@@ -3,3 +3,9 @@ pythonpath = ["app"]
 testpaths = ["tests"]
 
 
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203"]
+
+[tool.black]
+line-length = 100

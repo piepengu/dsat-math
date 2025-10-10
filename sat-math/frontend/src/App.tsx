@@ -814,7 +814,42 @@ function App() {
                         {explanationOpen && (
                             <div className="mt-2">
                                 <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
-                                <div className="font-semibold mt-2">Explanation</div>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <div className="font-semibold">Explanation</div>
+                                    <div className="flex flex-wrap gap-1 text-xs">
+                                        {result.explanation?.concept && (
+                                            <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">Concept</span>
+                                        )}
+                                        {result.explanation?.plan && (
+                                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Plan</span>
+                                        )}
+                                        {result.explanation?.quick_check && (
+                                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">Quick check</span>
+                                        )}
+                                        {result.explanation?.common_mistake && (
+                                            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800">Common mistake</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        className="ml-auto text-xs text-gray-700 hover:underline"
+                                        onClick={async () => {
+                                            const parts: string[] = []
+                                            if (result.explanation?.concept) parts.push(`Concept: ${result.explanation.concept}`)
+                                            if (result.explanation?.plan) parts.push(`Plan: ${result.explanation.plan}`)
+                                            result.explanation_steps.forEach((s, i) => parts.push(`${i + 1}. ${s}`))
+                                            if (result.explanation?.quick_check) parts.push(`Quick check: ${result.explanation.quick_check}`)
+                                            if (result.explanation?.common_mistake) parts.push(`Common mistake: ${result.explanation.common_mistake}`)
+                                            const text = parts.join('\n')
+                                            try {
+                                                await navigator.clipboard.writeText(text)
+                                            } catch {
+                                                // no-op
+                                            }
+                                        }}
+                                    >
+                                        Copy explanation
+                                    </button>
+                                </div>
                                 {result.explanation && (
                                     <div className="mb-2 text-sm text-gray-800 space-y-1">
                                         {result.explanation.concept && (
