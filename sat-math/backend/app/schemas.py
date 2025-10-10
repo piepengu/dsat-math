@@ -98,6 +98,7 @@ class GenerateAIResponse(BaseModel):
     explanation_steps: List[str]
     diagram: Optional[DiagramSpec] = None
     hints: Optional[List[str]] = None
+    explanation: Optional["Explanation"] = None
 
 
 class AttemptAIRequest(BaseModel):

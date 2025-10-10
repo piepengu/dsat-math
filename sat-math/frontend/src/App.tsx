@@ -67,6 +67,12 @@ type GenerateAIResponse = {
     explanation_steps: string[]
     diagram?: GenerateResponse['diagram']
     hints?: string[]
+    explanation?: {
+        concept?: string
+        plan?: string
+        quick_check?: string
+        common_mistake?: string
+    }
 }
 
 function App() {
@@ -92,6 +98,7 @@ function App() {
     const [adaptive, setAdaptive] = useState<boolean>(false)
     const [aiCorrectIndex, setAiCorrectIndex] = useState<number | null>(null)
     const [aiExplanation, setAiExplanation] = useState<string[] | null>(null)
+    const [aiExplanationMeta, setAiExplanationMeta] = useState<GenerateAIResponse['explanation'] | null>(null)
     const [explanationOpen, setExplanationOpen] = useState<boolean>(true)
     const [hints, setHints] = useState<string[]>([])
     const [hintsShown, setHintsShown] = useState<number>(0)
@@ -360,6 +367,7 @@ function App() {
                 setChoices(resp.data.choices)
                 setAiCorrectIndex(resp.data.correct_index)
                 setAiExplanation(resp.data.explanation_steps)
+                setAiExplanationMeta(resp.data.explanation ?? null)
                 setDiagram(resp.data.diagram ?? null)
                 setHints(resp.data.hints ?? [])
                 setHintsShown(0)
@@ -410,7 +418,7 @@ function App() {
                     correct,
                     correct_answer: correctAnswer,
                     explanation_steps: explanation,
-                    explanation: aiExplanationDefaults[skill] || undefined,
+                    explanation: (aiExplanationMeta as any) || aiExplanationDefaults[skill] || undefined,
                 })
                 if (inSession) setNumCorrect((c) => c + (correct ? 1 : 0))
                 if (inSession && !correct) {

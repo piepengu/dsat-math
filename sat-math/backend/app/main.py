@@ -963,6 +963,96 @@ def generate_ai(req: GenerateAIRequest):
             return _fallback_mc()
 
         # Return validated AI item
+        # Build default explanation per skill
+        def _ai_expl_defaults(sk: str) -> dict:
+            mapping = {
+                "linear_equation": {
+                    "concept": "Linear equation; distribute and isolate x",
+                    "plan": "Expand, move constants, divide to isolate x",
+                    "quick_check": "Plug back to verify LHS = RHS",
+                    "common_mistake": "Forgetting to distribute to all terms",
+                },
+                "two_step_equation": {
+                    "concept": "Two-step linear equation",
+                    "plan": "Undo addition/subtraction, then undo multiplication",
+                    "quick_check": "Substitute x and check equality",
+                    "common_mistake": "Dividing before moving the constant term",
+                },
+                "linear_system_2x2": {
+                    "concept": "2×2 linear system",
+                    "plan": "Eliminate one variable, then back-substitute",
+                    "quick_check": "Plug (x, y) into both equations",
+                    "common_mistake": "Adding equations with mismatched coefficients",
+                },
+                "linear_system_3x3": {
+                    "concept": "3×3 linear system",
+                    "plan": "Eliminate stepwise or use matrix methods",
+                    "quick_check": "Verify all three equations hold",
+                    "common_mistake": "Arithmetic errors during elimination",
+                },
+                "quadratic_roots": {
+                    "concept": "Quadratic roots via factoring",
+                    "plan": "Factor, set each factor to zero",
+                    "quick_check": "Each root makes a factor zero",
+                    "common_mistake": "Missing a root or mixing signs",
+                },
+                "exponential_solve": {
+                    "concept": "Exponential equation; isolate and take logarithm",
+                    "plan": "Isolate b^x, then apply log base b",
+                    "quick_check": "Check a·b^x equals RHS",
+                    "common_mistake": "Taking logs before isolating the exponential",
+                },
+                "rational_equation": {
+                    "concept": "Rational equation; clear denominators",
+                    "plan": "Multiply by LCD, solve resulting equation",
+                    "quick_check": "Plug solution; discard extraneous",
+                    "common_mistake": "Not multiplying every term by the LCD",
+                },
+                "proportion": {
+                    "concept": "Proportion; cross-multiplication",
+                    "plan": "Cross-multiply, then isolate",
+                    "quick_check": "Verify a/b = x/c",
+                    "common_mistake": "Multiplying only one side",
+                },
+                "unit_rate": {
+                    "concept": "Unit rate (cost per item)",
+                    "plan": "Divide total cost by number of items",
+                    "quick_check": "Sanity-check magnitude",
+                    "common_mistake": "Dividing items by cost",
+                },
+                "pythagorean_hypotenuse": {
+                    "concept": "Right triangle; Pythagorean theorem",
+                    "plan": "Square legs, add, square root",
+                    "quick_check": "a^2 + b^2 = c^2",
+                    "common_mistake": "Adding legs without squaring",
+                },
+                "pythagorean_leg": {
+                    "concept": "Right triangle; c^2 - a^2 = b^2",
+                    "plan": "Square hypotenuse and leg, subtract, root",
+                    "quick_check": "c^2 - known^2 = leg^2",
+                    "common_mistake": "Subtracting in wrong order",
+                },
+                "rectangle_area": {
+                    "concept": "Area of rectangle",
+                    "plan": "Multiply width by height",
+                    "quick_check": "Units square; w×h",
+                    "common_mistake": "Adding sides instead of multiplying",
+                },
+                "rectangle_perimeter": {
+                    "concept": "Perimeter of rectangle",
+                    "plan": "Add width and height, ×2",
+                    "quick_check": "Units linear; 2(w+h)",
+                    "common_mistake": "Using area formula",
+                },
+                "triangle_angle": {
+                    "concept": "Triangle interior angles sum to 180°",
+                    "plan": "Subtract known angles from 180°",
+                    "quick_check": "A+B+C=180°",
+                    "common_mistake": "Adding instead of subtracting",
+                },
+            }
+            return mapping.get(sk, {})
+
         return GenerateAIResponse(
             prompt_latex=str(prompt_latex),
             choices=[str(c) for c in choices],
@@ -978,6 +1068,7 @@ def generate_ai(req: GenerateAIRequest):
                     else None
                 )
             ),
+            explanation=_ai_expl_defaults(req.skill or ""),
         )
     except Exception:
         # Any unexpected error — safe fallback
