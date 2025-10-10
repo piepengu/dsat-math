@@ -286,3 +286,18 @@ Planned next (2025-10-06, updated)
 - Guardrails v2: stricter schema length/range caps; log counts to a simple `/health` debug or log.
 - Diagram v2: add more angle/tick styles and coordinate triangles; verify label contrast.
 - Optional: “Formula sheet” static page and header link.
+
+Updates (2025-10-10)
+- Backend
+  - Added rich Explanation model (concept, plan, quick_check, common_mistake); returned in `/generate` and `/grade`.
+  - Populated explanations across generators; added AI explanation defaults and included `explanation` in `/generate_ai`.
+  - Geometry: `triangle_angle` template shows a double-arc marker by default; AI fallback now returns the triangle diagram (with markers).
+  - Linter config: set Black/Flake8 line length to 120.
+- Frontend
+  - Explanation UI: renders Concept/Plan/Steps/Quick check/Common mistake; added badges and a “Copy explanation” button.
+  - AI mode: renders backend-provided Explanation; keeps client-side defaults as fallback.
+  - Visuals: background darkened to `bg-gray-200`.
+  - Diagrams: added right-angle square marker and multi-arc angle markers; added a small legend (angles/sides) under diagrams.
+- Deployment/Verification
+  - Pushed changes to GitHub; Pages rebuilt; Render backend redeployed.
+  - Smoke tested representative skills (template and AI); rich explanations and diagram legends visible in both modes.
