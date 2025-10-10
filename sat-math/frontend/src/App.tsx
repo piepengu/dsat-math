@@ -1129,6 +1129,12 @@ function RightTriangle({ a, b, labels, showLabels = true }: RightTriangleProps) 
                 )}
                 <polyline points={`${leftX},${baseY} ${leftX + 12},${baseY} ${leftX + 12},${baseY - 12}`} fill="none" stroke="#111827" />
             </svg>
+            <div className="mt-1 text-xs text-gray-600 flex items-center gap-3">
+                <span className="inline-flex items-center gap-1">
+                    <svg width="18" height="12"><polyline points={`0,12 12,12 12,0`} fill="none" stroke="#111827" /></svg>
+                    Right angle
+                </span>
+            </div>
         </div>
     )
 }
@@ -1148,12 +1154,23 @@ function TriangleDiagram({ spec, showLabels }: TriangleDiagramProps) {
     }
     const labels = spec.labels || {}
     const labelStyle: React.CSSProperties = { paintOrder: 'stroke', stroke: '#fff', strokeWidth: 4, strokeLinejoin: 'round' }
-    const drawAngleArc = (at: 'A' | 'B' | 'C', _style: string, radius = 16) => {
+    const drawAngleArc = (at: 'A' | 'B' | 'C', style: string, radius = 16) => {
         const p = at === 'A' ? A : at === 'B' ? B : C
-        // Draw a simple quarter/arc marker; keep generic for now
         const r = Math.max(10, Math.min(24, radius))
-        const d = `M ${p[0] + r} ${p[1]} A ${r} ${r} 0 0 0 ${p[0]} ${p[1] - r}`
-        return <path d={d} fill="none" stroke="#111827" />
+        if (style === 'right') {
+            const s = Math.max(8, Math.min(18, r - 4))
+            const d = `M ${p[0]} ${p[1]} m 0 ${-s} l ${s} 0 l 0 ${s}`
+            return <path d={d} fill="none" stroke="#111827" />
+        }
+        const count = style === 'double' ? 2 : style === 'triple' ? 3 : 1
+        const gap = 3
+        const arcs: ReactNode[] = []
+        for (let i = 0; i < count; i++) {
+            const rr = r - i * gap
+            const d = `M ${p[0] + rr} ${p[1]} A ${rr} ${rr} 0 0 0 ${p[0]} ${p[1] - rr}`
+            arcs.push(<path key={`arc-${at}-${i}`} d={d} fill="none" stroke="#111827" />)
+        }
+        return <g>{arcs}</g>
     }
     const drawTicks = (side: 'a' | 'b' | 'c', count: 1 | 2 | 3) => {
         // sides: a=BC, b=AC, c=AB
@@ -1175,22 +1192,49 @@ function TriangleDiagram({ spec, showLabels }: TriangleDiagramProps) {
         }
         return lines
     }
+    const hasRight = Boolean(spec.angleMarkers?.some((m) => String(m.style) === 'right'))
+    const hasMultiArcs = Boolean(spec.angleMarkers?.some((m) => ['double', 'triple'].includes(String(m.style))))
     return (
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
-            <polygon points={`${A[0]},${A[1]} ${B[0]},${B[1]} ${C[0]},${C[1]}`} fill="#eef2ff" stroke="#111827" />
-            {spec.angleMarkers?.map((m, i) => (
-                <g key={`am-${i}`}>{drawAngleArc(m.at as any, String(m.style), Number(m.radius) || 16)}</g>
-            ))}
-            {spec.sideTicks?.map((t, i) => (
-                <g key={`t-${i}`}>{drawTicks(t.side as any, Math.max(1, Math.min(3, Number(t.count) || 1)) as 1 | 2 | 3)}</g>
-            ))}
-            {showLabels && (
-                <>
-                    <text x={A[0] - 8} y={A[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.A ?? 'A'}</text>
-                    <text x={B[0] + 6} y={B[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.B ?? 'B'}</text>
-                    <text x={C[0] - 6} y={C[1] - 8} fontSize="14" fill="#111827" style={labelStyle}>{labels.C ?? 'C'}</text>
-                </>
-            )}
-        </svg>
+        <div className="mb-1">
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="border rounded bg-white">
+                <polygon points={`${A[0]},${A[1]} ${B[0]},${B[1]} ${C[0]},${C[1]}`} fill="#eef2ff" stroke="#111827" />
+                {spec.angleMarkers?.map((m, i) => (
+                    <g key={`am-${i}`}>{drawAngleArc(m.at as any, String(m.style), Number(m.radius) || 16)}</g>
+                ))}
+                {spec.sideTicks?.map((t, i) => (
+                    <g key={`t-${i}`}>{drawTicks(t.side as any, Math.max(1, Math.min(3, Number(t.count) || 1)) as 1 | 2 | 3)}</g>
+                ))}
+                {showLabels && (
+                    <>
+                        <text x={A[0] - 8} y={A[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.A ?? 'A'}</text>
+                        <text x={B[0] + 6} y={B[1] + 16} fontSize="14" fill="#111827" style={labelStyle}>{labels.B ?? 'B'}</text>
+                        <text x={C[0] - 6} y={C[1] - 8} fontSize="14" fill="#111827" style={labelStyle}>{labels.C ?? 'C'}</text>
+                    </>
+                )}
+            </svg>
+            <div className="mt-1 text-xs text-gray-600 flex items-center gap-3 flex-wrap">
+                {hasRight && (
+                    <span className="inline-flex items-center gap-1">
+                        <svg width="18" height="12"><polyline points={`0,12 12,12 12,0`} fill="none" stroke="#111827" /></svg>
+                        Right angle
+                    </span>
+                )}
+                {hasMultiArcs && (
+                    <span className="inline-flex items-center gap-1">
+                        <svg width="18" height="12">
+                            <path d={`M 12 12 A 6 6 0 0 0 6 6`} fill="none" stroke="#111827" />
+                            <path d={`M 12 12 A 9 9 0 0 0 3 3`} fill="none" stroke="#111827" />
+                        </svg>
+                        Equal angles
+                    </span>
+                )}
+                {Boolean(spec.sideTicks && spec.sideTicks.length) && (
+                    <span className="inline-flex items-center gap-1">
+                        <svg width="18" height="12"><line x1="4" y1="10" x2="14" y2="2" stroke="#111827" /><line x1="9" y1="7" x2="9" y2="5" stroke="#111827" /></svg>
+                        Equal sides
+                    </span>
+                )}
+            </div>
+        </div>
     )
 }
