@@ -301,3 +301,10 @@ Updates (2025-10-10)
 - Deployment/Verification
   - Pushed changes to GitHub; Pages rebuilt; Render backend redeployed.
   - Smoke tested representative skills (template and AI); rich explanations and diagram legends visible in both modes.
+
+Next up (planned)
+- Add an “Elaborate” AI tutor:
+  - UI: button near Explanation opens a textbox to ask follow-up questions.
+  - Backend: `/elaborate` endpoint (Gemini) that uses the current problem (prompt LaTeX), steps, correct answer, and the user’s question as context to generate a lesson-style explanation.
+  - Guardrails: token/length caps, safe formatting (KaTeX-friendly), streaming optional.
+  - UX: show response under the explanation; allow copy.
