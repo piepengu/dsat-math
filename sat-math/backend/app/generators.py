@@ -638,7 +638,7 @@ def generate_triangle_interior_angle(seed: int) -> GeneratedItem:
         "type": "triangle",
         "triangle": {"mode": "ASA", "A": a, "B": b, "C": c},
         "angleMarkers": [
-            {"at": "A", "style": "single", "radius": 18},
+            {"at": "A", "style": "double", "radius": 18},
             {"at": "B", "style": "single", "radius": 18},
         ],
         "sideTicks": [{"side": "c", "count": 2}],
