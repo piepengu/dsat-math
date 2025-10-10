@@ -381,7 +381,7 @@ function App() {
     }, [])
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
+        <div className="min-h-screen bg-gray-200 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production; keep a hidden error node to satisfy TS usage */}
                 {lastError && (
