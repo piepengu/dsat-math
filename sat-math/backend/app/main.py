@@ -42,6 +42,7 @@ from .generators import (
     grade_triangle_interior_angle,
     grade_two_step_equation,
 )
+from .guardrails import validate_ai_payload
 from .models import Attempt
 from .schemas import (
     AttemptAIRequest,
@@ -69,6 +70,16 @@ except Exception:
     _HAS_GENAI = False
 
 app = FastAPI()
+
+# Guardrails metrics (process lifetime)
+app.state.guardrails_metrics = {
+    "ai_calls_total": 0,
+    "validated_ok_total": 0,
+    "validation_failed_total": 0,
+    "fallback_total": 0,
+    "unsafe_latex_total": 0,
+    "over_length_total": 0,
+}
 
 # CORS: use explicit origins to keep headers valid in browsers
 _env_origins = os.getenv("FRONTEND_ORIGIN", "").strip()
@@ -112,7 +123,14 @@ except Exception:
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    try:
+        gm = getattr(app.state, "guardrails_metrics", {})
+        return {
+            "ok": True,
+            "guardrails": gm,
+        }
+    except Exception:
+        return {"ok": True}
 
 
 @app.post("/generate", response_model=GenerateResponse)
@@ -222,11 +240,7 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
     elif req.domain == "Algebra" and req.skill == "linear_equation_mc":
         correct, sol, steps, why_sel = grade_linear_equation_mc(
             req.seed,
-            (
-                req.selected_choice_index
-                if req.selected_choice_index is not None
-                else -1
-            ),
+            (req.selected_choice_index if req.selected_choice_index is not None else -1),
         )
         from .generators import generate_linear_equation_mc as _gen
 
@@ -530,6 +544,11 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
 
 @app.post("/generate_ai", response_model=GenerateAIResponse)
 def generate_ai(req: GenerateAIRequest):
+    try:
+        app.state.guardrails_metrics["ai_calls_total"] += 1
+    except Exception:
+        pass
+
     def _fallback_mc() -> GenerateAIResponse:
         # Fallback to a safe template-based item, matching requested skill
         # when possible
@@ -552,9 +571,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Geometry" and req.skill == "pythagorean_leg":
                 item = generate_pythagorean_leg(seed)
@@ -571,9 +588,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_area":
                 item = generate_rectangle_area(seed)
@@ -589,9 +604,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Geometry" and req.skill == "rectangle_perimeter":
                 item = generate_rectangle_perimeter(seed)
@@ -607,9 +620,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Geometry" and req.skill == "triangle_angle":
                 item = generate_triangle_interior_angle(seed)
@@ -626,9 +637,7 @@ def generate_ai(req: GenerateAIRequest):
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
                     diagram=getattr(item, "diagram", None),
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Algebra" and req.skill == "linear_system_2x2":
                 item = generate_linear_system_2x2(seed)
@@ -646,9 +655,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Advanced" and req.skill == "linear_system_3x3":
                 from .generators import _parse_triple  # local helper
@@ -670,9 +677,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "Advanced" and req.skill == "rational_equation":
                 item = generate_rational_equation(seed)
@@ -743,9 +748,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
             if req.domain == "PSD" and req.skill == "unit_rate":
                 item = generate_psd_unit_rate(seed)
@@ -764,9 +767,7 @@ def generate_ai(req: GenerateAIRequest):
                     choices=choices,
                     correct_index=0,
                     explanation_steps=item.explanation_steps,
-                    hints=(
-                        item.explanation_steps[:2] if item.explanation_steps else None
-                    ),
+                    hints=(item.explanation_steps[:2] if item.explanation_steps else None),
                 )
         except Exception:
             # fall back to linear MC below
@@ -783,9 +784,8 @@ def generate_ai(req: GenerateAIRequest):
     # If AI is unavailable, immediately return fallback
     if not _HAS_GENAI:
         try:
-            _log.warning(
-                "ai_unavailable_fallback domain=%s skill=%s", req.domain, req.skill
-            )
+            _log.warning("ai_unavailable_fallback domain=%s skill=%s", req.domain, req.skill)
+            app.state.guardrails_metrics["fallback_total"] += 1
         except Exception:
             pass
         return _fallback_mc()
@@ -798,6 +798,7 @@ def generate_ai(req: GenerateAIRequest):
                 req.domain,
                 req.skill,
             )
+            app.state.guardrails_metrics["fallback_total"] += 1
         except Exception:
             pass
         return _fallback_mc()
@@ -853,115 +854,36 @@ def generate_ai(req: GenerateAIRequest):
                         req.domain,
                         req.skill,
                     )
+                    app.state.guardrails_metrics["validation_failed_total"] += 1
+                    app.state.guardrails_metrics["fallback_total"] += 1
                 except Exception:
                     pass
                 return _fallback_mc()
 
-        # Extract fields
-        choices = data.get("choices") or []
-        correct_index = int(data.get("correct_index", -1))
-        steps = data.get("explanation_steps") or []
-        hints = data.get("hints") or None
-        prompt_latex = data.get("prompt_latex") or ""
-        diagram = data.get("diagram") or None
-
-        # Server-side validation
-        def _ok_choice(s: str) -> bool:
-            return isinstance(s, str) and 0 < len(s) <= 120
-
-        valid = True
-        if not (isinstance(choices, list) and len(choices) == 4):
-            valid = False
-        # normalize choices to strings and enforce uniqueness/length
-        choices = [str(c) for c in choices]
-        if not all(_ok_choice(c) for c in choices):
-            valid = False
-        if len(set(choices)) != 4:
-            valid = False
-        if not (isinstance(correct_index, int) and 0 <= correct_index < 4):
-            valid = False
-        if not (isinstance(prompt_latex, str) and 1 <= len(prompt_latex) <= 4000):
-            valid = False
-        # Disallow problematic commands that break KaTeX
-        if re.search(
-            r"\\label\{|\\begin\{document\}|\\end\{document\}",
-            prompt_latex,
-        ):
-            valid = False
-        # Explanation steps size cap and per-step length
-        if not (isinstance(steps, list) and 1 <= len(steps) <= 10):
-            valid = False
-        else:
-            if any((not isinstance(s, str)) or (len(s) > 240) for s in steps):
-                valid = False
-
-        # Skill-specific math/format validation
-        try:
-            import sympy as _sp
-
-            if req.skill in (
-                "linear_equation",
-                "linear_equation_mc",
-                "two_step_equation",
-                "exponential_solve",
-                "rational_equation",
-                "proportion",
-                "pythagorean_hypotenuse",
-                "pythagorean_leg",
-                "rectangle_area",
-                "rectangle_perimeter",
-                "triangle_angle",
-                "unit_rate",
-            ):
-                if not all(_sp.sympify(c, evaluate=False) is not None for c in choices):
-                    valid = False
-            if req.skill in ("linear_system_2x2", "quadratic_roots"):
-
-                def _is_pair(s: str) -> bool:
-                    t = s.strip()
-                    return t.startswith("(") and t.endswith(")") and "," in t
-
-                if not all(_is_pair(c) for c in choices):
-                    valid = False
-            if req.skill in ("linear_system_3x3",):
-
-                def _is_triple(s: str) -> bool:
-                    t = s.strip()
-                    return t.startswith("(") and t.endswith(")") and t.count(",") == 2
-
-                if not all(_is_triple(c) for c in choices):
-                    valid = False
-        except Exception:
-            valid = False
-
-        # Optional diagram validation (currently supports right_triangle)
-        diagram_out = None
-        if isinstance(diagram, dict) and diagram.get("type") == "right_triangle":
-            try:
-                da = int(diagram.get("a", 0))
-                db = int(diagram.get("b", 0))
-                dc = int(diagram.get("c", 0))
-                if da > 0 and db > 0 and dc > 0:
-                    diagram_out = {
-                        "type": "right_triangle",
-                        "a": da,
-                        "b": db,
-                        "c": dc,
-                        "labels": diagram.get("labels") or {},
-                    }
-            except Exception:
-                diagram_out = None
-
+        # Guardrails v2 validation and metrics
+        valid, cleaned, reasons, flags = validate_ai_payload(req.domain, req.skill, data)
         if not valid:
             try:
                 _log.warning(
-                    "validation_fallback domain=%s skill=%s",
+                    "validation_fallback domain=%s skill=%s reasons=%s",
                     req.domain,
                     req.skill,
+                    ",".join(reasons) if reasons else "",
                 )
+                app.state.guardrails_metrics["validation_failed_total"] += 1
+                if flags.get("unsafe_latex"):
+                    app.state.guardrails_metrics["unsafe_latex_total"] += 1
+                if flags.get("over_length"):
+                    app.state.guardrails_metrics["over_length_total"] += 1
+                app.state.guardrails_metrics["fallback_total"] += 1
             except Exception:
                 pass
             return _fallback_mc()
+        else:
+            try:
+                app.state.guardrails_metrics["validated_ok_total"] += 1
+            except Exception:
+                pass
 
         # Return validated AI item
         # Build default explanation per skill
@@ -1055,17 +977,22 @@ def generate_ai(req: GenerateAIRequest):
             return mapping.get(sk, {})
 
         return GenerateAIResponse(
-            prompt_latex=str(prompt_latex),
-            choices=[str(c) for c in choices],
-            correct_index=int(correct_index),
-            explanation_steps=[str(s) for s in steps],
-            diagram=diagram_out,
+            prompt_latex=str(cleaned.get("prompt_latex", "")),
+            choices=[str(c) for c in cleaned.get("choices", [])],
+            correct_index=int(cleaned.get("correct_index", 0)),
+            explanation_steps=[str(s) for s in cleaned.get("explanation_steps", [])],
+            diagram=cleaned.get("diagram"),
             hints=(
-                hints
-                if hints
+                cleaned.get("hints")
+                if cleaned.get("hints")
                 else (
-                    [str(steps[0])] + ([str(steps[1])] if len(steps) > 1 else [])
-                    if steps
+                    [str(cleaned.get("explanation_steps", [""])[0])]
+                    + (
+                        [str(cleaned.get("explanation_steps", [""])[1])]
+                        if len(cleaned.get("explanation_steps", [])) > 1
+                        else []
+                    )
+                    if cleaned.get("explanation_steps")
                     else None
                 )
             ),

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSAT Math Forge — Formula Sheet</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false}]});"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: #e5e7eb;
+            color: #111827;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #2563eb;
+            margin: 0 0 12px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin: 20px 0 8px;
+        }
+
+        ul {
+            margin: 8px 0 0 18px;
+        }
+
+        li {
+            margin: 6px 0;
+        }
+
+        .small {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .section {
+            margin-top: 16px;
+        }
+
+        a {
+            color: #2563eb;
+        }
+    </style>
+    <meta name="robots" content="noindex" />
+    <meta name="description" content="Quick DSAT math formula sheet for Algebra, Advanced Math, Geometry, and PSD." />
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>DSAT Math — Formula Sheet</h1>
+            <div class="small">Common formulas you’re allowed to know and use. Not exhaustive.</div>
+
+            <div class="section">
+                <h2>Algebra</h2>
+                <ul>
+                    <li>Point–slope form: \( y - y_1 = m(x - x_1) \)</li>
+                    <li>Slope from two points: \( m = \frac{y_2 - y_1}{x_2 - x_1} \)</li>
+                    <li>Slope–intercept: \( y = mx + b \)</li>
+                    <li>Quadratic formula: \( x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \)</li>
+                    <li>Vertex of \( ax^2+bx+c \): \( x_v = -\tfrac{b}{2a} \)</li>
+                    <li>Exponent rules: \( a^m a^n = a^{m+n} \), \( (a^m)^n = a^{mn} \), \( a^{-n}=\tfrac{1}{a^n} \)
+                    </li>
+                    <li>Log rules: \( \log_b(xy)=\log_b x+\log_b y \), \( \log_b(x^k)=k\log_b x \)</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Advanced Math</h2>
+                <ul>
+                    <li>System 2×2 (determinant idea): if \( ad-bc \neq 0 \), unique solution</li>
+                    <li>Completing the square: \( x^2+bx=(x+\tfrac{b}{2})^2-\tfrac{b^2}{4} \)</li>
+                    <li>Exponential form: \( y=a\,b^x \) and \( \log_b y = x \iff b^x=y \)</li>
+                    <li>Rational equation tip: multiply both sides by LCD; check extraneous roots</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Geometry & Trig</h2>
+                <ul>
+                    <li>Pythagorean theorem: \( a^2+b^2=c^2 \)</li>
+                    <li>Triangle interior sum: \( A+B+C=180^\circ \)</li>
+                    <li>Right triangle defs: \( \sin\theta=\tfrac{\text{opp}}{\text{hyp}} \), \(
+                        \cos\theta=\tfrac{\text{adj}}{\text{hyp}} \), \( \tan\theta=\tfrac{\text{opp}}{\text{adj}} \)
+                    </li>
+                    <li>Rect. perimeter/area: \( P=2(w+h) \), \( A=wh \)</li>
+                    <li>Circle: \( C=2\pi r \), \( A=\pi r^2 \)</li>
+                    <li>Distance: \( d=\sqrt{(x_2-x_1)^2+(y_2-y_1)^2} \)</li>
+                    <li>Midpoint: \( M=\big(\tfrac{x_1+x_2}{2},\tfrac{y_1+y_2}{2}\big) \)</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Problem Solving & Data Analysis</h2>
+                <ul>
+                    <li>Percent change: \( \tfrac{\text{new}-\text{old}}{\text{old}}\times 100\% \)</li>
+                    <li>Mean: \( \bar{x}=\tfrac{1}{n}\sum x_i \); Weighted mean: \( \bar{x}=\tfrac{\sum w_i x_i}{\sum
+                        w_i} \)</li>
+                    <li>Unit rate: \( \tfrac{\text{quantity}}{\text{time or units}} \)</li>
+                    <li>Line of best fit: slope interprets rate of change per unit in \(x\)</li>
+                </ul>
+            </div>
+
+            <div class="section small">
+                <div>Tip: Always check units and reasonableness of answers.</div>
+                <div><a href="./" rel="noopener">Back to app</a></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

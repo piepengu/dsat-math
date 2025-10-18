@@ -484,7 +484,18 @@ function App() {
                 {lastError && (
                     <div className="sr-only">Last error: {lastError}</div>
                 )}
-                <h2 className="text-2xl font-semibold mb-3 text-blue-600">DSAT Math Forge</h2>
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-2xl font-semibold text-blue-600">DSAT Math Forge</h2>
+                    <a
+                        className="text-sm text-indigo-700 hover:underline"
+                        href="formulas.html"
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Open formula sheet"
+                    >
+                        Formula sheet
+                    </a>
+                </div>
                 <div className="flex flex-wrap gap-2 items-center mb-3">
                     <select
                         className="border rounded px-3 py-2 bg-white"
