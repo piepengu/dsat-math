@@ -308,3 +308,20 @@ Next up (planned)
   - Backend: `/elaborate` endpoint (Gemini) that uses the current problem (prompt LaTeX), steps, correct answer, and the user’s question as context to generate a lesson-style explanation.
   - Guardrails: token/length caps, safe formatting (KaTeX-friendly), streaming optional.
   - UX: show response under the explanation; allow copy.
+
+
+Updates (2025-10-18)
+- Backend
+  - Guardrails v2: added `app/guardrails.py` with strict schema caps (lengths, step counts), unsafe LaTeX blocklist, and per‑skill format checks; integrated into `/generate_ai` with reason‑coded logging.
+  - Observability: exposed guardrail counters in `/health` (`ai_calls_total`, `validated_ok_total`, `validation_failed_total`, `fallback_total`, `unsafe_latex_total`, `over_length_total`).
+  - PSD templates: wired non‑AI flow for `unit_rate` — `/generate` now returns the unit‑rate word problem; `/grade` validates answers.
+  - Tests: added `tests/test_guardrails.py` covering unsafe LaTeX rejection and a valid item path.
+  - Lint: reflowed long lines in `/generate_ai` response (hints construction) to satisfy style caps.
+- Frontend
+  - Formula sheet: added static `public/formulas.html` (KaTeX‑rendered common formulas) and a header “Formula sheet” link in `src/App.tsx` (relative path for Pages).
+  - UX tweak: formula page now shows a single high‑contrast “Close this tab” button; removed the extra “Open the app here” link.
+- Deploy/Pages
+  - Built frontend and published to `docs/` (including `formulas.html`); verified header link and close‑button behavior on GitHub Pages.
+- Verification
+  - `/health` shows guardrails counters; `/generate_ai` increments fallback counters when AI is unavailable.
+  - Selecting PSD → Unit rate with AI off returns a unit‑rate word problem as expected.
