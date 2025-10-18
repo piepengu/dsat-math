@@ -123,10 +123,20 @@
                 </ul>
             </div>
 
-            <div class="section small">
-                <div>Tip: Always check units and reasonableness of answers.</div>
-                <div><a href="./" rel="noopener">Back to app</a></div>
-            </div>
+      <div class="section small">
+        <div>Tip: Always check units and reasonableness of answers.</div>
+        <div style="margin-top:8px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button
+            type="button"
+            onclick="(function(){try{window.close()}catch(e){} window.location.href='./'})()"
+            style="padding:6px 10px; background:#374151; color:#111827; border-radius:6px; border:1px solid #e5e7eb; cursor:pointer;"
+            aria-label="Close this tab and return to the app"
+          >
+            Close this tab
+          </button>
+          <a href="./" rel="noopener">Open the app here</a>
+        </div>
+      </div>
         </div>
     </div>
 </body>
