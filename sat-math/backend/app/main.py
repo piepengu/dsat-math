@@ -33,6 +33,7 @@ from .generators import (
     grade_linear_system_2x2,
     grade_linear_system_3x3,
     grade_proportion,
+    grade_psd_unit_rate,
     grade_pythagorean_hypotenuse,
     grade_pythagorean_leg,
     grade_quadratic_roots,
@@ -142,6 +143,8 @@ def generate_item(req: GenerateRequest):
         item = generate_two_step_equation(seed)
     elif req.domain == "PSD" and req.skill == "proportion":
         item = generate_proportion(seed)
+    elif req.domain == "PSD" and req.skill == "unit_rate":
+        item = generate_psd_unit_rate(seed)
     elif req.domain == "Algebra" and req.skill == "linear_system_2x2":
         item = generate_linear_system_2x2(seed)
     elif req.domain == "Advanced" and req.skill == "linear_system_3x3":
@@ -219,6 +222,14 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             req.user_answer,
         )
         from .generators import generate_proportion as _gen
+
+        item_meta = _gen(req.seed)
+    elif req.domain == "PSD" and req.skill == "unit_rate":
+        correct, sol, steps = grade_psd_unit_rate(
+            req.seed,
+            req.user_answer,
+        )
+        from .generators import generate_psd_unit_rate as _gen
 
         item_meta = _gen(req.seed)
     elif req.domain == "Algebra" and req.skill == "linear_system_2x2":
@@ -976,26 +987,22 @@ def generate_ai(req: GenerateAIRequest):
             }
             return mapping.get(sk, {})
 
+        # Prepare hints separately to keep lines short and satisfy lint caps
+        _steps = cleaned.get("explanation_steps") or []
+        if cleaned.get("hints"):
+            _hints = cleaned.get("hints")
+        elif _steps:
+            _hints = [str(_steps[0])] + ([str(_steps[1])] if len(_steps) > 1 else [])
+        else:
+            _hints = None
+
         return GenerateAIResponse(
             prompt_latex=str(cleaned.get("prompt_latex", "")),
             choices=[str(c) for c in cleaned.get("choices", [])],
             correct_index=int(cleaned.get("correct_index", 0)),
-            explanation_steps=[str(s) for s in cleaned.get("explanation_steps", [])],
+            explanation_steps=[str(s) for s in _steps],
             diagram=cleaned.get("diagram"),
-            hints=(
-                cleaned.get("hints")
-                if cleaned.get("hints")
-                else (
-                    [str(cleaned.get("explanation_steps", [""])[0])]
-                    + (
-                        [str(cleaned.get("explanation_steps", [""])[1])]
-                        if len(cleaned.get("explanation_steps", [])) > 1
-                        else []
-                    )
-                    if cleaned.get("explanation_steps")
-                    else None
-                )
-            ),
+            hints=_hints,
             explanation=_ai_expl_defaults(req.skill or ""),
         )
     except Exception:
