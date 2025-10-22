@@ -1066,14 +1066,54 @@ def generate_ai(req: GenerateAIRequest):
                     bump += 1
                     if req.skill in ("linear_equation", "two_step_equation", "exponential_solve", "rational_equation", "proportion", "unit_rate"):
                         t = f"({s}) + 0"
+                    elif req.skill in ("linear_system_2x2", "quadratic_roots") and s.startswith("(") and s.endswith(")"):
+                        # Insert +0 inside the tuple on the last value: (a, b+0)
+                        inner = s[1:-1]
+                        parts = [p.strip() for p in inner.split(",")]
+                        if len(parts) >= 2:
+                            parts[-1] = parts[-1] + " + 0"
+                            t = f"({', '.join(parts)})"
+                        else:
+                            t = f"({s}) + 0"
+                    elif req.skill in ("linear_system_3x3",) and s.startswith("(") and s.endswith(")"):
+                        inner = s[1:-1]
+                        parts = [p.strip() for p in inner.split(",")]
+                        if len(parts) >= 3:
+                            parts[-1] = parts[-1] + " + 0"
+                            t = f"({', '.join(parts)})"
+                        else:
+                            t = f"({s}) + 0"
                     else:
-                        t = s + (" " * bump)
+                        # For other skills, append a harmless +0 pattern
+                        t = f"({s}) + 0"
                 out[i] = t
                 seen.add(t)
             return out[:4]
 
         if isinstance(data, dict):
             data["choices"] = _normalize_choices(req.skill or "", data.get("choices") or [])
+            # Normalize explanation steps: 1..MAX_STEPS, each <= MAX_STEP_LEN
+            raw_steps = data.get("explanation_steps") or []
+            try:
+                from .guardrails import MAX_STEPS as _MAX_STEPS, MAX_STEP_LEN as _MAX_STEP_LEN
+            except Exception:
+                _MAX_STEPS, _MAX_STEP_LEN = 8, 200
+            norm_steps = []
+            for s in raw_steps:
+                try:
+                    t = str(s).strip()
+                    if len(t) > _MAX_STEP_LEN:
+                        t = t[:_MAX_STEP_LEN]
+                    if t:
+                        norm_steps.append(t)
+                except Exception:
+                    continue
+            if not norm_steps:
+                norm_steps = [
+                    "Identify givens and what is asked.",
+                    "Compute step by step and verify.",
+                ]
+            data["explanation_steps"] = norm_steps[:_MAX_STEPS]
 
         # Guardrails v2 validation and metrics
         valid, cleaned, reasons, flags = validate_ai_payload(req.domain, req.skill, data)
