@@ -917,7 +917,7 @@ def generate_ai(req: GenerateAIRequest):
 
     # Prefer stable v1 API; avoids v1beta model availability issues
     try:
-        genai.configure(api_key=api_key, client_options={"api_version": "v1"})
+        genai.configure(api_key=api_key, api_version="v1")
     except Exception:
         genai.configure(api_key=api_key)
 
@@ -932,13 +932,14 @@ def generate_ai(req: GenerateAIRequest):
         "(e.g., \\frac, \\sqrt). No code fences or extra text."
     )
 
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-        },
-    )
+    def _build_model(name: str):
+        return genai.GenerativeModel(
+            model_name=name,
+            generation_config={"response_mime_type": "application/json"},
+        )
+
     try:
+        model = _build_model("gemini-1.5-flash")
         resp = model.generate_content(prompt)
     except Exception as e:
         # If the flash model name is not available on v1beta, retry with -001
@@ -946,13 +947,23 @@ def generate_ai(req: GenerateAIRequest):
             from google.api_core.exceptions import NotFound as _NotFound
         except Exception:
             _NotFound = Exception
-        if isinstance(e, _NotFound) or "models/gemini-1.5-flash is not found" in str(e):
-            _log.warning("model_not_found_retry domain=%s skill=%s", req.domain, req.skill)
-            alt_model = genai.GenerativeModel(
-                model_name="gemini-1.5-flash-001",
-                generation_config={"response_mime_type": "application/json"},
+        if (
+            isinstance(e, _NotFound)
+            or "models/gemini-1.5-flash is not found" in str(e)
+            or "v1beta" in str(e)
+        ):
+            _log.warning(
+                "model_not_found_retry domain=%s skill=%s err=%s", req.domain, req.skill, str(e)[:120]
             )
-            resp = alt_model.generate_content(prompt)
+            # Try alternative flash names commonly available
+            for alt_name in ("gemini-1.5-flash-001", "gemini-1.5-flash-latest"):
+                try:
+                    resp = _build_model(alt_name).generate_content(prompt)
+                    break
+                except Exception as e2:
+                    last_err = e2
+            else:
+                raise last_err
         else:
             raise
         text = (resp.text or "").strip()
