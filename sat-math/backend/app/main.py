@@ -1107,5 +1107,11 @@ def generate_ai(req: GenerateAIRequest):
             explanation=_ai_expl_defaults(req.skill or ""),
         )
     except Exception:
-        # Any unexpected error — safe fallback
+        # Any unexpected error — safe fallback (log and count)
+        try:
+            _log.exception("ai_unhandled_error domain=%s skill=%s", req.domain, req.skill)
+            app.state.guardrails_metrics["validation_failed_total"] += 1
+            app.state.guardrails_metrics["fallback_total"] += 1
+        except Exception:
+            pass
         return _fallback_mc()
