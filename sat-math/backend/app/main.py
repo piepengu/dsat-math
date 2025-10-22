@@ -1047,8 +1047,18 @@ def generate_ai(req: GenerateAIRequest):
                 s = re.sub(r"\s*,\s*", ", ", s)
                 if skill in ("linear_system_2x2", "quadratic_roots"):
                     # Ensure pair format: (a, b)
-                    if "," in s and not (s.startswith("(") and s.endswith(")")):
-                        s = f"({s})"
+                    if "," in s:
+                        if not (s.startswith("(") and s.endswith(")")):
+                            s = f"({s})"
+                    else:
+                        # Try to coerce space/and separated into a pair
+                        parts = re.split(r"\s+and\s+|\s+", s)
+                        parts = [p for p in parts if p]
+                        if len(parts) == 2:
+                            s = f"({parts[0]}, {parts[1]})"
+                        else:
+                            # As a last resort, create a benign pair
+                            s = f"({s}, 0)"
                 if skill in ("linear_system_3x3",):
                     # Ensure triple: (a, b, c)
                     if s.count(",") == 2 and not (s.startswith("(") and s.endswith(")")):
