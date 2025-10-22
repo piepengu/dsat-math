@@ -567,6 +567,7 @@ def elaborate(req: ElaborateRequest):
         pass
     # In-memory rate limit: 3/min and 20/day per user_id
     import time as _time
+
     from fastapi import HTTPException as _HTTPException
 
     user_id = (req.user_id or "anonymous").strip() or "anonymous"
@@ -602,8 +603,7 @@ def elaborate(req: ElaborateRequest):
         ok, cleaned, reasons, flags = validate_elaboration_payload(draft)
         if not ok:
             cleaned = {
-                k: (cleaned.get(k) or None)
-                for k in ["concept", "plan", "walkthrough", "quick_check", "common_mistake"]
+                k: (cleaned.get(k) or None) for k in ["concept", "plan", "walkthrough", "quick_check", "common_mistake"]
             }
         ms = int((_time.perf_counter() - start) * 1000)
         return ElaborateResponse(
