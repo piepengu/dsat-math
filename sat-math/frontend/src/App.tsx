@@ -869,6 +869,17 @@ function App() {
                                         Copy explanation
                                     </button>
                                 </div>
+                                {/* Elaborate AI tutor */}
+                                <ElaborateTutor
+                                    apiBase={apiBase}
+                                    userId={userId}
+                                    domain={domain}
+                                    skill={skill}
+                                    difficulty={difficulty}
+                                    promptLatex={latex}
+                                    steps={result.explanation_steps}
+                                    correctAnswer={result.correct_answer}
+                                />
                                 {result.explanation && (
                                     <div className="mb-2 text-sm text-gray-800 space-y-1">
                                         {result.explanation.concept && (
@@ -1107,6 +1118,111 @@ function App() {
 
 export default App
 
+function ElaborateTutor(props: {
+    apiBase: string
+    userId: string
+    domain: Domain
+    skill: Skill
+    difficulty: 'easy' | 'medium' | 'hard'
+    promptLatex: string
+    steps: string[]
+    correctAnswer: string
+}) {
+    const { apiBase, userId, domain, skill, difficulty, promptLatex, steps, correctAnswer } = props
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [err, setErr] = useState<string | null>(null)
+    const [resp, setResp] = useState<null | {
+        concept?: string
+        plan?: string
+        walkthrough?: string[]
+        quick_check?: string
+        common_mistake?: string
+    }>(null)
+
+    const submit = async () => {
+        if (!q.trim()) return
+        setLoading(true)
+        setErr(null)
+        setResp(null)
+        try {
+            const body = {
+                user_id: userId || 'anonymous',
+                domain,
+                skill,
+                difficulty,
+                prompt_latex: promptLatex,
+                steps,
+                correct_answer: correctAnswer,
+                user_question: q.trim(),
+            }
+            const r = await axios.post<{ elaboration: any }>(`${apiBase}/elaborate`, body)
+            setResp(r.data?.elaboration || null)
+        } catch (e: any) {
+            const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+            setErr(msg)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="mt-3">
+            <button
+                className="inline-flex items-center px-2 py-1.5 rounded bg-sky-200 text-sky-900 hover:bg-sky-300 text-xs"
+                onClick={() => setOpen((v) => !v)}
+            >
+                {open ? 'Hide tutor' : 'Ask the tutor'}
+            </button>
+            {open && (
+                <div className="mt-2 p-3 border rounded bg-gray-50">
+                    <div className="text-xs text-gray-700 mb-1">Ask a follow-up question about this problem:</div>
+                    <textarea
+                        className="w-full border rounded p-2 text-sm bg-white"
+                        rows={3}
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        placeholder="E.g., Why did we subtract there? Could you show another method?"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
+                            disabled={loading || !q.trim()}
+                            onClick={submit}
+                        >
+                            {loading ? 'Thinking…' : 'Ask'}
+                        </button>
+                        {err && <span className="text-xs text-rose-700">{err}</span>}
+                    </div>
+                    {resp && (
+                        <div className="mt-3 text-sm text-gray-800 space-y-1">
+                            {resp.concept && (
+                                <div><span className="font-semibold">Concept:</span> {renderInlineMath(resp.concept)}</div>
+                            )}
+                            {resp.plan && (
+                                <div><span className="font-semibold">Plan:</span> {renderInlineMath(resp.plan)}</div>
+                            )}
+                            {Array.isArray(resp.walkthrough) && resp.walkthrough.length > 0 && (
+                                <ol className="list-decimal list-inside space-y-1">
+                                    {resp.walkthrough.map((w, i) => (
+                                        <li key={i}>{renderInlineMath(String(w))}</li>
+                                    ))}
+                                </ol>
+                            )}
+                            {resp.quick_check && (
+                                <div><span className="font-semibold">Quick check:</span> {renderInlineMath(resp.quick_check)}</div>
+                            )}
+                            {resp.common_mistake && (
+                                <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInlineMath(resp.common_mistake)}</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
 type RightTriangleProps = { a: number; b: number; c: number; labels: Record<string, string>; showLabels?: boolean }
 function RightTriangle({ a, b, labels, showLabels = true }: RightTriangleProps) {
     const maxSide = Math.max(a, b)

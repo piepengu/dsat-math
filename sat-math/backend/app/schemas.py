@@ -146,3 +146,28 @@ class ResetStatsRequest(BaseModel):
 class ResetStatsResponse(BaseModel):
     ok: bool
     deleted: int
+
+
+class ElaborateRequest(BaseModel):
+    user_id: Optional[str] = None
+    domain: Optional[str] = None
+    skill: Optional[str] = None
+    difficulty: Optional[str] = None
+    prompt_latex: str
+    steps: Optional[List[str]] = None
+    correct_answer: Optional[str] = None
+    user_question: str
+
+
+class ElaboratePayload(BaseModel):
+    concept: Optional[str] = None
+    plan: Optional[str] = None
+    walkthrough: Optional[List[str]] = None
+    quick_check: Optional[str] = None
+    common_mistake: Optional[str] = None
+
+
+class ElaborateResponse(BaseModel):
+    elaboration: ElaboratePayload
+    usage_ms: int = 0
+    guardrails: Optional[Dict[str, object]] = None

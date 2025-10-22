@@ -49,6 +49,8 @@ from .schemas import (
     AttemptAIRequest,
     AttemptAIResponse,
     AttemptOut,
+    ElaborateRequest,
+    ElaborateResponse,
     EstimateRequest,
     EstimateResponse,
     GenerateAIRequest,
@@ -81,6 +83,7 @@ app.state.guardrails_metrics = {
     "unsafe_latex_total": 0,
     "over_length_total": 0,
 }
+app.state.elaborate_calls_total = 0
 
 # CORS: use explicit origins to keep headers valid in browsers
 _env_origins = os.getenv("FRONTEND_ORIGIN", "").strip()
@@ -126,10 +129,7 @@ except Exception:
 def health():
     try:
         gm = getattr(app.state, "guardrails_metrics", {})
-        return {
-            "ok": True,
-            "guardrails": gm,
-        }
+        return {"ok": True, "guardrails": gm, "elaborate_calls": app.state.elaborate_calls_total}
     except Exception:
         return {"ok": True}
 
@@ -551,6 +551,29 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
     db.add(db_attempt)
     db.commit()
     return AttemptAIResponse(ok=True, correct=correct)
+
+
+@app.post("/elaborate", response_model=ElaborateResponse)
+def elaborate(req: ElaborateRequest):
+    try:
+        app.state.elaborate_calls_total += 1
+    except Exception:
+        pass
+    # Stubbed elaboration — KaTeX-safe and concise
+    walkthrough = req.steps[:3] if isinstance(req.steps, list) else []
+    payload = {
+        "concept": "Decompose the problem and apply the relevant rule.",
+        "plan": "Identify givens, choose a method, compute carefully, then verify.",
+        "walkthrough": walkthrough
+        or [
+            "Restate the question in your own words.",
+            "Write the key equation or relation.",
+            "Compute step by step and check the result.",
+        ],
+        "quick_check": "Plug the result back or compare units/magnitude.",
+        "common_mistake": "Skipping isolating the variable before computing.",
+    }
+    return ElaborateResponse(elaboration=payload, usage_ms=0, guardrails={"blocked": False})
 
 
 @app.post("/generate_ai", response_model=GenerateAIResponse)
