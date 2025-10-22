@@ -8,6 +8,11 @@ MAX_CHOICE_LEN = 120
 MAX_STEPS = 8
 MAX_STEP_LEN = 200
 
+# Elaborate caps
+ELAB_MAX_TEXT = 600  # concept/plan/quick_check/common_mistake
+ELAB_MAX_WALKTHROUGH_STEPS = 8
+ELAB_MAX_WALKTHROUGH_STEP_LEN = 220
+
 # Disallowed LaTeX/content that can break KaTeX or be unsafe
 _DISALLOWED_LATEX = re.compile(
     (r"\\(input|include|write18|openout|read|write|immediate)\b|" r"\\begin\{document\}|\\end\{document\}|\\label\{"),
@@ -169,6 +174,69 @@ def validate_ai_payload(
         "explanation_steps": steps,
         "hints": hints if hints else None,
         "diagram": diagram_out,
+    }
+
+    return valid, cleaned, reasons, flags
+
+
+def validate_elaboration_payload(data: Dict[str, Any]) -> Tuple[bool, Dict[str, Any], List[str], Dict[str, bool]]:
+    """Validate elaboration payload fields for /elaborate."""
+    reasons: List[str] = []
+    flags: Dict[str, bool] = {}
+
+    concept = data.get("concept") or None
+    plan = data.get("plan") or None
+    walkthrough = data.get("walkthrough") or []
+    quick = data.get("quick_check") or None
+    mistake = data.get("common_mistake") or None
+
+    valid = True
+
+    def _ok_text(s: Any) -> bool:
+        return isinstance(s, str) and 0 < len(s) <= ELAB_MAX_TEXT and not _has_unsafe_latex(s)
+
+    if concept is not None and not _ok_text(concept):
+        valid = False
+        reasons.append("concept_bad")
+        if isinstance(concept, str) and _has_unsafe_latex(concept):
+            flags["unsafe_latex"] = True
+    if plan is not None and not _ok_text(plan):
+        valid = False
+        reasons.append("plan_bad")
+        if isinstance(plan, str) and _has_unsafe_latex(plan):
+            flags["unsafe_latex"] = True
+    if quick is not None and not _ok_text(quick):
+        valid = False
+        reasons.append("quick_bad")
+        if isinstance(quick, str) and _has_unsafe_latex(quick):
+            flags["unsafe_latex"] = True
+    if mistake is not None and not _ok_text(mistake):
+        valid = False
+        reasons.append("mistake_bad")
+        if isinstance(mistake, str) and _has_unsafe_latex(mistake):
+            flags["unsafe_latex"] = True
+
+    steps_out: List[str] = []
+    if walkthrough is not None:
+        if not isinstance(walkthrough, list) or len(walkthrough) > ELAB_MAX_WALKTHROUGH_STEPS:
+            valid = False
+            reasons.append("walkthrough_count")
+        else:
+            for s in walkthrough:
+                if not isinstance(s, str) or len(s) > ELAB_MAX_WALKTHROUGH_STEP_LEN or _has_unsafe_latex(s):
+                    valid = False
+                    reasons.append("walkthrough_step")
+                    if isinstance(s, str) and _has_unsafe_latex(s):
+                        flags["unsafe_latex"] = True
+                else:
+                    steps_out.append(str(s))
+
+    cleaned = {
+        "concept": str(concept) if isinstance(concept, str) else None,
+        "plan": str(plan) if isinstance(plan, str) else None,
+        "walkthrough": steps_out if steps_out else None,
+        "quick_check": str(quick) if isinstance(quick, str) else None,
+        "common_mistake": str(mistake) if isinstance(mistake, str) else None,
     }
 
     return valid, cleaned, reasons, flags

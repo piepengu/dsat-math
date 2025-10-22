@@ -1172,8 +1172,13 @@ function ElaborateTutor(props: {
             const r = await axios.post<{ elaboration: any }>(`${apiBase}/elaborate`, body)
             setResp(r.data?.elaboration || null)
         } catch (e: any) {
-            const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
-            setErr(msg)
+            const status = e?.response?.status
+            if (status === 429) {
+                setErr('You hit the tutor limit. Please wait a minute and try again.')
+            } else {
+                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                setErr(msg)
+            }
         } finally {
             setLoading(false)
         }

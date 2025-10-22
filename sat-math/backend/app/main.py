@@ -43,7 +43,7 @@ from .generators import (
     grade_triangle_interior_angle,
     grade_two_step_equation,
 )
-from .guardrails import validate_ai_payload
+from .guardrails import validate_ai_payload, validate_elaboration_payload
 from .models import Attempt
 from .schemas import (
     AttemptAIRequest,
@@ -559,21 +559,93 @@ def elaborate(req: ElaborateRequest):
         app.state.elaborate_calls_total += 1
     except Exception:
         pass
-    # Stubbed elaboration — KaTeX-safe and concise
-    walkthrough = req.steps[:3] if isinstance(req.steps, list) else []
-    payload = {
-        "concept": "Decompose the problem and apply the relevant rule.",
-        "plan": "Identify givens, choose a method, compute carefully, then verify.",
-        "walkthrough": walkthrough
-        or [
-            "Restate the question in your own words.",
-            "Write the key equation or relation.",
-            "Compute step by step and check the result.",
-        ],
-        "quick_check": "Plug the result back or compare units/magnitude.",
-        "common_mistake": "Skipping isolating the variable before computing.",
-    }
-    return ElaborateResponse(elaboration=payload, usage_ms=0, guardrails={"blocked": False})
+    # In-memory rate limit: 3/min and 20/day per user_id
+    import time as _time
+    from fastapi import HTTPException as _HTTPException
+
+    user_id = (req.user_id or "anonymous").strip() or "anonymous"
+    now = _time.time()
+    minute_bucket = int(now // 60)
+    day_bucket = int(now // 86400)
+    if not hasattr(app.state, "_elab_quota"):
+        app.state._elab_quota = {}
+    qb = app.state._elab_quota
+    min_key = (user_id, minute_bucket)
+    day_key = (user_id, day_bucket)
+    qb[min_key] = qb.get(min_key, 0) + 1
+    qb[day_key] = qb.get(day_key, 0) + 1
+    if qb[min_key] > 3 or qb[day_key] > 20:
+        raise _HTTPException(status_code=429, detail={"error": "quota_exceeded"})
+
+    start = _time.perf_counter()
+
+    def _fallback_stub() -> ElaborateResponse:
+        walkthrough = req.steps[:3] if isinstance(req.steps, list) else []
+        draft = {
+            "concept": "Decompose the problem and apply the relevant rule.",
+            "plan": "Identify givens, choose a method, compute carefully, then verify.",
+            "walkthrough": walkthrough
+            or [
+                "Restate the question in your own words.",
+                "Write the key equation or relation.",
+                "Compute step by step and check the result.",
+            ],
+            "quick_check": "Plug the result back or compare units/magnitude.",
+            "common_mistake": "Skipping isolating the variable before computing.",
+        }
+        ok, cleaned, reasons, flags = validate_elaboration_payload(draft)
+        if not ok:
+            cleaned = {
+                k: (cleaned.get(k) or None)
+                for k in ["concept", "plan", "walkthrough", "quick_check", "common_mistake"]
+            }
+        ms = int((_time.perf_counter() - start) * 1000)
+        return ElaborateResponse(
+            elaboration=cleaned,
+            usage_ms=ms,
+            guardrails={"blocked": False, "reasons": reasons, "flags": flags},
+        )
+
+    if not _HAS_GENAI:
+        return _fallback_stub()
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return _fallback_stub()
+
+    try:
+        genai.configure(api_key=api_key)
+        prompt = (
+            "You are a helpful DSAT math tutor. Given the problem context and a user's question, "
+            "return STRICT JSON with keys: concept (string), plan (string), walkthrough (array of 3-6 short strings), "
+            "quick_check (string), common_mistake (string). All content must be KaTeX-friendly (no dangerous commands).\n"
+            f"Domain: {req.domain or ''}. Skill: {req.skill or ''}. Difficulty: {req.difficulty or ''}.\n"
+            f"Prompt LaTeX: {req.prompt_latex}\n"
+            f"Steps: {(req.steps or [])}\n"
+            f"Correct answer: {req.correct_answer or ''}\n"
+            f"User question: {req.user_question}\n"
+            "Return ONLY JSON."
+        )
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            generation_config={"response_mime_type": "application/json"},
+        )
+        resp = model.generate_content(prompt)
+        text = (resp.text or "").strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            text = text.replace("json", "", 1).strip()
+        data = json.loads(text)
+        ok, cleaned, reasons, flags = validate_elaboration_payload(data or {})
+        if not ok:
+            return _fallback_stub()
+        ms = int((_time.perf_counter() - start) * 1000)
+        return ElaborateResponse(
+            elaboration=cleaned,
+            usage_ms=ms,
+            guardrails={"blocked": False, "reasons": reasons, "flags": flags},
+        )
+    except Exception:
+        return _fallback_stub()
 
 
 @app.post("/generate_ai", response_model=GenerateAIResponse)
