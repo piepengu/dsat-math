@@ -955,8 +955,13 @@ def generate_ai(req: GenerateAIRequest):
             _log.warning(
                 "model_not_found_retry domain=%s skill=%s err=%s", req.domain, req.skill, str(e)[:120]
             )
-            # Try alternative flash names commonly available
-            for alt_name in ("gemini-1.5-flash-001", "gemini-1.5-flash-latest"):
+            # Try alternative model names commonly available on v1beta
+            for alt_name in (
+                "gemini-1.5-flash-001",
+                "gemini-1.5-flash-latest",
+                "gemini-1.0-pro",
+                "gemini-pro",
+            ):
                 try:
                     resp = _build_model(alt_name).generate_content(prompt)
                     break
