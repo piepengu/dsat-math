@@ -1141,6 +1141,18 @@ function ElaborateTutor(props: {
         common_mistake?: string
     }>(null)
 
+    // Local inline math renderer (mirrors App's renderer)
+    const renderInline = (text: string) =>
+        String(text)
+            .split(/(\$[^$]+\$)/g)
+            .map((seg, i) => {
+                if (seg.startsWith('$') && seg.endsWith('$')) {
+                    return <InlineMath key={i} math={seg.slice(1, -1)} />
+                }
+                const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
+                return <span key={i}>{cleaned}</span>
+            })
+
     const submit = async () => {
         if (!q.trim()) return
         setLoading(true)
@@ -1198,23 +1210,23 @@ function ElaborateTutor(props: {
                     {resp && (
                         <div className="mt-3 text-sm text-gray-800 space-y-1">
                             {resp.concept && (
-                                <div><span className="font-semibold">Concept:</span> {renderInlineMath(resp.concept)}</div>
+                                <div><span className="font-semibold">Concept:</span> {renderInline(resp.concept)}</div>
                             )}
                             {resp.plan && (
-                                <div><span className="font-semibold">Plan:</span> {renderInlineMath(resp.plan)}</div>
+                                <div><span className="font-semibold">Plan:</span> {renderInline(resp.plan)}</div>
                             )}
                             {Array.isArray(resp.walkthrough) && resp.walkthrough.length > 0 && (
                                 <ol className="list-decimal list-inside space-y-1">
                                     {resp.walkthrough.map((w, i) => (
-                                        <li key={i}>{renderInlineMath(String(w))}</li>
+                                        <li key={i}>{renderInline(String(w))}</li>
                                     ))}
                                 </ol>
                             )}
                             {resp.quick_check && (
-                                <div><span className="font-semibold">Quick check:</span> {renderInlineMath(resp.quick_check)}</div>
+                                <div><span className="font-semibold">Quick check:</span> {renderInline(resp.quick_check)}</div>
                             )}
                             {resp.common_mistake && (
-                                <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInlineMath(resp.common_mistake)}</div>
+                                <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInline(resp.common_mistake)}</div>
                             )}
                         </div>
                     )}
