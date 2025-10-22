@@ -424,22 +424,26 @@ function App() {
                 if (inSession && !correct) {
                     setMissed((arr) => [...arr, { domain, skill, difficulty }])
                 }
-                // Persist AI attempt for stats
-                try {
-                    await axios.post(`${apiBase}/attempt_ai`, {
-                        user_id: userId || 'anonymous',
-                        domain,
-                        skill,
-                        selected_choice_index: selectedIdx ?? -1,
-                        correct_index: aiCorrectIndex,
-                        correct_answer: correctAnswer,
-                        seed: -1,
-                        time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
-                        difficulty,
-                    })
-                } catch (e) {
-                    // ignore logging errors
-                }
+                // Release UI immediately; persist AI attempt in background
+                setLoading(false)
+                void (async () => {
+                    try {
+                        await axios.post(`${apiBase}/attempt_ai`, {
+                            user_id: userId || 'anonymous',
+                            domain,
+                            skill,
+                            selected_choice_index: selectedIdx ?? -1,
+                            correct_index: aiCorrectIndex,
+                            correct_answer: correctAnswer,
+                            seed: -1,
+                            time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
+                            difficulty,
+                        })
+                    } catch {
+                        // ignore logging errors
+                    }
+                })()
+                return
             } else {
                 const payload: any = {
                     domain,
