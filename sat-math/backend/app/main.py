@@ -987,11 +987,22 @@ def generate_ai(req: GenerateAIRequest):
             last_err = e
             continue
     else:
-        raise last_err if last_err else RuntimeError("No Gemini model available")
-        text = (resp.text or "").strip()
-        if text.startswith("```"):
-            text = text.strip("`")
-            text = text.replace("json", "", 1).strip()
+        try:
+            _log.warning(
+                "model_selection_failed domain=%s skill=%s err=%s",
+                req.domain,
+                req.skill,
+                str(last_err)[:120] if last_err else "unknown",
+            )
+            app.state.guardrails_metrics["fallback_total"] += 1
+        except Exception:
+            pass
+        return _fallback_mc()
+
+    text = (resp.text or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text.replace("json", "", 1).strip()
 
         # First attempt to parse JSON
         try:
@@ -1158,12 +1169,4 @@ def generate_ai(req: GenerateAIRequest):
             hints=_hints,
             explanation=_ai_expl_defaults(req.skill or ""),
         )
-    except Exception:
-        # Any unexpected error — safe fallback (log and count)
-        try:
-            _log.exception("ai_unhandled_error domain=%s skill=%s", req.domain, req.skill)
-            app.state.guardrails_metrics["validation_failed_total"] += 1
-            app.state.guardrails_metrics["fallback_total"] += 1
-        except Exception:
-            pass
-        return _fallback_mc()
+    # End generate_ai
