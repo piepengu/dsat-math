@@ -999,10 +999,11 @@ def generate_ai(req: GenerateAIRequest):
             pass
         return _fallback_mc()
 
-    text = (resp.text or "").strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        text = text.replace("json", "", 1).strip()
+    try:
+        text = (resp.text or "").strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            text = text.replace("json", "", 1).strip()
 
         # First attempt to parse JSON
         try:
@@ -1169,4 +1170,11 @@ def generate_ai(req: GenerateAIRequest):
             hints=_hints,
             explanation=_ai_expl_defaults(req.skill or ""),
         )
-    # End generate_ai
+    except Exception:
+        try:
+            _log.exception("ai_unhandled_error domain=%s skill=%s", req.domain, req.skill)
+            app.state.guardrails_metrics["validation_failed_total"] += 1
+            app.state.guardrails_metrics["fallback_total"] += 1
+        except Exception:
+            pass
+        return _fallback_mc()
