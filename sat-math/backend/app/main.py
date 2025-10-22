@@ -1074,9 +1074,18 @@ def generate_ai(req: GenerateAIRequest):
                 bump = 0
                 while t in seen:
                     bump += 1
-                    if req.skill in ("linear_equation", "two_step_equation", "exponential_solve", "rational_equation", "proportion", "unit_rate"):
+                    if req.skill in (
+                        "linear_equation",
+                        "two_step_equation",
+                        "exponential_solve",
+                        "rational_equation",
+                        "proportion",
+                        "unit_rate",
+                    ):
                         t = f"({s}) + 0"
-                    elif req.skill in ("linear_system_2x2", "quadratic_roots") and s.startswith("(") and s.endswith(")"):
+                    elif (
+                        req.skill in ("linear_system_2x2", "quadratic_roots") and s.startswith("(") and s.endswith(")")
+                    ):
                         # Insert +0 inside the tuple on the last value: (a, b+0)
                         inner = s[1:-1]
                         parts = [p.strip() for p in inner.split(",")]
@@ -1105,7 +1114,8 @@ def generate_ai(req: GenerateAIRequest):
             # Normalize explanation steps: 1..MAX_STEPS, each <= MAX_STEP_LEN
             raw_steps = data.get("explanation_steps") or []
             try:
-                from .guardrails import MAX_STEPS as _MAX_STEPS, MAX_STEP_LEN as _MAX_STEP_LEN
+                from .guardrails import MAX_STEP_LEN as _MAX_STEP_LEN
+                from .guardrails import MAX_STEPS as _MAX_STEPS
             except Exception:
                 _MAX_STEPS, _MAX_STEP_LEN = 8, 200
             norm_steps = []
@@ -1240,6 +1250,34 @@ def generate_ai(req: GenerateAIRequest):
                 },
             }
             return mapping.get(sk, {})
+
+        # Normalize prompt text to avoid letter-by-letter artifacts (e.g., "p l u s")
+        def _normalize_prompt_text(s: str) -> str:
+            try:
+                t = str(s).replace("\n", " ").replace("\r", " ")
+                t = re.sub(r"\s+", " ", t).strip()
+                tokens = t.split(" ")
+                out = []
+                run: list = []
+                for tok in tokens:
+                    if len(tok) == 1 and tok.isalpha():
+                        run.append(tok)
+                    else:
+                        if len(run) >= 2:
+                            out.append("".join(run))
+                        elif run:
+                            out.extend(run)
+                        run = []
+                        out.append(tok)
+                if len(run) >= 2:
+                    out.append("".join(run))
+                elif run:
+                    out.extend(run)
+                return " ".join(out)
+            except Exception:
+                return s
+
+        cleaned["prompt_latex"] = _normalize_prompt_text(cleaned.get("prompt_latex", ""))
 
         # Prepare hints separately to keep lines short and satisfy lint caps
         _steps = cleaned.get("explanation_steps") or []
