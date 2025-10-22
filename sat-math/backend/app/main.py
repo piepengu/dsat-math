@@ -915,7 +915,11 @@ def generate_ai(req: GenerateAIRequest):
             pass
         return _fallback_mc()
 
-    genai.configure(api_key=api_key)
+    # Prefer stable v1 API; avoids v1beta model availability issues
+    try:
+        genai.configure(api_key=api_key, client_options={"api_version": "v1"})
+    except Exception:
+        genai.configure(api_key=api_key)
 
     prompt = (
         "You are an expert DSAT Math question writer. "
@@ -936,6 +940,21 @@ def generate_ai(req: GenerateAIRequest):
     )
     try:
         resp = model.generate_content(prompt)
+    except Exception as e:
+        # If the flash model name is not available on v1beta, retry with -001
+        try:
+            from google.api_core.exceptions import NotFound as _NotFound
+        except Exception:
+            _NotFound = Exception
+        if isinstance(e, _NotFound) or "models/gemini-1.5-flash is not found" in str(e):
+            _log.warning("model_not_found_retry domain=%s skill=%s", req.domain, req.skill)
+            alt_model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash-001",
+                generation_config={"response_mime_type": "application/json"},
+            )
+            resp = alt_model.generate_content(prompt)
+        else:
+            raise
         text = (resp.text or "").strip()
         if text.startswith("```"):
             text = text.strip("`")
