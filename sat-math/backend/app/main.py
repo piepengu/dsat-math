@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import re
+import sys
 from typing import List, Optional
 
 from fastapi import Depends, FastAPI
@@ -129,7 +130,12 @@ except Exception:
 def health():
     try:
         gm = getattr(app.state, "guardrails_metrics", {})
-        return {"ok": True, "guardrails": gm, "elaborate_calls": app.state.elaborate_calls_total}
+        return {
+            "ok": True,
+            "guardrails": gm,
+            "elaborate_calls": app.state.elaborate_calls_total,
+            "python_version": sys.version,
+        }
     except Exception:
         return {"ok": True}
 
