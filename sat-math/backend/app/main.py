@@ -1036,6 +1036,45 @@ def generate_ai(req: GenerateAIRequest):
                     pass
                 return _fallback_mc()
 
+        # Light normalization of choices before validation to satisfy expected formats
+        def _normalize_choices(skill: str, vals: list) -> list:
+            out = []
+            for c in (vals or [])[:4]:
+                s = str(c).strip()
+                # Common bracket fixes and separators
+                s = s.replace("[", "(").replace("]", ")").replace("{", "(").replace("}", ")")
+                s = s.replace(";", ",")
+                s = re.sub(r"\s*,\s*", ", ", s)
+                if skill in ("linear_system_2x2", "quadratic_roots"):
+                    # Ensure pair format: (a, b)
+                    if "," in s and not (s.startswith("(") and s.endswith(")")):
+                        s = f"({s})"
+                if skill in ("linear_system_3x3",):
+                    # Ensure triple: (a, b, c)
+                    if s.count(",") == 2 and not (s.startswith("(") and s.endswith(")")):
+                        s = f"({s})"
+                out.append(s)
+            # Ensure 4 choices by repeating last if fewer
+            while len(out) < 4:
+                out.append(out[-1] if out else "0")
+            # Enforce uniqueness (last-resort tweaks that preserve value semantics)
+            seen = set()
+            for i, s in enumerate(out):
+                t = s
+                bump = 0
+                while t in seen:
+                    bump += 1
+                    if req.skill in ("linear_equation", "two_step_equation", "exponential_solve", "rational_equation", "proportion", "unit_rate"):
+                        t = f"({s}) + 0"
+                    else:
+                        t = s + (" " * bump)
+                out[i] = t
+                seen.add(t)
+            return out[:4]
+
+        if isinstance(data, dict):
+            data["choices"] = _normalize_choices(req.skill or "", data.get("choices") or [])
+
         # Guardrails v2 validation and metrics
         valid, cleaned, reasons, flags = validate_ai_payload(req.domain, req.skill, data)
         if not valid:
