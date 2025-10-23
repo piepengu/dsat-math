@@ -643,58 +643,26 @@ def elaborate(req: ElaborateRequest):
                 generation_config={"response_mime_type": "application/json"},
             )
 
-        # Discover available models and choose one that supports generateContent
+        # Use gemini-1.5-flash directly (fastest model) without discovery
+        # This avoids the slow list_models() call and multiple retries
+        model_name = "gemini-1.5-flash"
         try:
-            available_models = list(genai.list_models())
-        except Exception:
-            available_models = []
-
-        def _supports_generate(m) -> bool:
-            methods = getattr(m, "supported_generation_methods", []) or []
-            return "generateContent" in methods or "generate_content" in methods
-
-        def _name_suffix(n: str) -> str:
-            return n.split("/")[-1] if "/" in n else n
-
-        preferred_order = [
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-001",
-            "gemini-1.5-flash-latest",
-            "gemini-1.0-pro",
-            "gemini-pro",
-        ]
-
-        candidate_names = []
-        for pref in preferred_order:
-            for m in available_models:
-                n = _name_suffix(getattr(m, "name", ""))
-                if pref in n and _supports_generate(m):
-                    candidate_names.append(n)
-                    break
-        for m in available_models:
-            n = _name_suffix(getattr(m, "name", ""))
-            if n not in candidate_names and _supports_generate(m):
-                candidate_names.append(n)
-        if not candidate_names:
-            candidate_names = preferred_order[:]
-
-        last_err = None
-        for model_name in candidate_names:
+            _log.info("elab_model_generate name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+            resp = _build_model(model_name).generate_content(prompt)
+        except Exception as e:
+            # Try one fallback model if flash fails
             try:
-                _log.info("elab_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+                model_name = "gemini-1.5-flash-001"
+                _log.info("elab_model_retry name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
                 resp = _build_model(model_name).generate_content(prompt)
-                break
-            except Exception as e:
-                last_err = e
-                continue
-        else:
-            _log.warning(
-                "elab_model_selection_failed domain=%s skill=%s err=%s",
-                req.domain,
-                req.skill,
-                str(last_err)[:120] if last_err else "unknown",
-            )
-            return _fallback_stub()
+            except Exception as e2:
+                _log.warning(
+                    "elab_model_failed domain=%s skill=%s err=%s",
+                    req.domain,
+                    req.skill,
+                    str(e2)[:120] if e2 else "unknown",
+                )
+                return _fallback_stub()
 
         text = (resp.text or "").strip()
         if text.startswith("```"):
@@ -1006,66 +974,30 @@ def generate_ai(req: GenerateAIRequest):
             generation_config={"response_mime_type": "application/json"},
         )
 
-    # Discover available models and choose one that supports generateContent
+    # Use gemini-1.5-flash directly (fastest model) without discovery
+    # This avoids the slow list_models() call and multiple retries
+    model_name = "gemini-1.5-flash"
     try:
-        available_models = list(genai.list_models())
-    except Exception:
-        available_models = []
-
-    def _supports_generate(m) -> bool:
-        methods = getattr(m, "supported_generation_methods", []) or []
-        return "generateContent" in methods or "generate_content" in methods
-
-    def _name_suffix(n: str) -> str:
-        return n.split("/")[-1] if "/" in n else n
-
-    preferred_order = [
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash-latest",
-        "gemini-1.0-pro",
-        "gemini-pro",
-    ]
-
-    candidate_names = []
-    # Add preferred if present in list_models
-    for pref in preferred_order:
-        for m in available_models:
-            n = _name_suffix(getattr(m, "name", ""))
-            if pref in n and _supports_generate(m):
-                candidate_names.append(n)
-                break
-    # Then any other model that supports generateContent
-    for m in available_models:
-        n = _name_suffix(getattr(m, "name", ""))
-        if n not in candidate_names and _supports_generate(m):
-            candidate_names.append(n)
-
-    # Fallback to static preferences if list_models returned nothing
-    if not candidate_names:
-        candidate_names = preferred_order[:]
-
-    last_err = None
-    for model_name in candidate_names:
+        _log.info("ai_model_generate name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+        resp = _build_model(model_name).generate_content(prompt)
+    except Exception as e:
+        # Try one fallback model if flash fails
         try:
-            _log.info("ai_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+            model_name = "gemini-1.5-flash-001"
+            _log.info("ai_model_retry name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
             resp = _build_model(model_name).generate_content(prompt)
-            break
-        except Exception as e:
-            last_err = e
-            continue
-    else:
-        try:
-            _log.warning(
-                "model_selection_failed domain=%s skill=%s err=%s",
-                req.domain,
-                req.skill,
-                str(last_err)[:120] if last_err else "unknown",
-            )
-            app.state.guardrails_metrics["fallback_total"] += 1
-        except Exception:
-            pass
-        return _fallback_mc()
+        except Exception as e2:
+            try:
+                _log.warning(
+                    "model_failed domain=%s skill=%s err=%s",
+                    req.domain,
+                    req.skill,
+                    str(e2)[:120] if e2 else "unknown",
+                )
+                app.state.guardrails_metrics["fallback_total"] += 1
+            except Exception:
+                pass
+            return _fallback_mc()
 
     try:
         text = (resp.text or "").strip()
