@@ -137,7 +137,7 @@ def health():
             "python_version": sys.version,
         }
     except Exception:
-    return {"ok": True}
+        return {"ok": True}
 
 
 @app.post("/generate", response_model=GenerateResponse)
