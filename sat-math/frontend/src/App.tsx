@@ -226,15 +226,24 @@ function App() {
 
     const allowedSkills = useMemo(() => skillOptions[domain], [domain])
 
-    const renderInlineMath = (text: string) =>
-        text.split(/(\$[^$]+\$)/g).map((seg, i) => {
-            if (seg.startsWith('$') && seg.endsWith('$')) {
-                return <InlineMath key={i} math={seg.slice(1, -1)} />
+    const renderInlineMath = (text: string) => {
+        // Support inline delimiters: $...$ and \(...\) and treat \[...\] inline for choices
+        const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
+        return parts.map((seg, i) => {
+            const isDollar = seg.startsWith('$') && seg.endsWith('$')
+            const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
+            const isBracket = seg.startsWith('\\[') && seg.endsWith('\\]')
+            if (isDollar || isParen || isBracket) {
+                let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
+                // Fix common malformed fractions like \frac(8)(5) → \frac{8}{5}
+                inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
+                inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
+                return <InlineMath key={i} math={inner} />
             }
-            // Clean common LaTeX spacing commands accidentally left in plain text
             const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
             return <span key={i}>{cleaned}</span>
         })
+    }
 
     // Ensure proper line breaks inside environments like cases/aligned/array
     const fixEnvNewlines = (text: string) => {

@@ -1278,6 +1278,16 @@ def generate_ai(req: GenerateAIRequest):
                 return s
 
         cleaned["prompt_latex"] = _normalize_prompt_text(cleaned.get("prompt_latex", ""))
+        # Normalize malformed inline LaTeX in choices (e.g., \frac(8)(5) → \frac{8}{5})
+        try:
+            fixed_choices = []
+            for c in cleaned.get("choices", []):
+                s = str(c)
+                s = re.sub(r"\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)", r"{\\frac{\1}{\2}}", s)
+                fixed_choices.append(s)
+            cleaned["choices"] = fixed_choices
+        except Exception:
+            pass
 
         # Prepare hints separately to keep lines short and satisfy lint caps
         _steps = cleaned.get("explanation_steps") or []
