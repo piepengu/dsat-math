@@ -987,7 +987,7 @@ def generate_ai(req: GenerateAIRequest):
     try:
         genai.configure(api_key=api_key, api_version="v1")
     except Exception:
-    genai.configure(api_key=api_key)
+        genai.configure(api_key=api_key)
 
     prompt = (
         "You are an expert DSAT Math question writer. "
