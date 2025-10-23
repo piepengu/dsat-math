@@ -619,7 +619,12 @@ def elaborate(req: ElaborateRequest):
         return _fallback_stub()
 
     try:
-        genai.configure(api_key=api_key)
+        # Prefer stable v1 API
+        try:
+            genai.configure(api_key=api_key, api_version="v1")
+        except Exception:
+            genai.configure(api_key=api_key)
+
         prompt = (
             "You are a helpful DSAT math tutor. Given the problem context and a user's question, "
             "return STRICT JSON with keys: concept (string), plan (string), walkthrough (array of 3-6 short strings), "
@@ -631,16 +636,78 @@ def elaborate(req: ElaborateRequest):
             f"User question: {req.user_question}\n"
             "Return ONLY JSON."
         )
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config={"response_mime_type": "application/json"},
-        )
-        resp = model.generate_content(prompt)
+
+        def _build_model(name: str):
+            return genai.GenerativeModel(
+                model_name=name,
+                generation_config={"response_mime_type": "application/json"},
+            )
+
+        # Discover available models and choose one that supports generateContent
+        try:
+            available_models = list(genai.list_models())
+        except Exception:
+            available_models = []
+
+        def _supports_generate(m) -> bool:
+            methods = getattr(m, "supported_generation_methods", []) or []
+            return "generateContent" in methods or "generate_content" in methods
+
+        def _name_suffix(n: str) -> str:
+            return n.split("/")[-1] if "/" in n else n
+
+        preferred_order = [
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-001",
+            "gemini-1.5-flash-latest",
+            "gemini-1.0-pro",
+            "gemini-pro",
+        ]
+
+        candidate_names = []
+        for pref in preferred_order:
+            for m in available_models:
+                n = _name_suffix(getattr(m, "name", ""))
+                if pref in n and _supports_generate(m):
+                    candidate_names.append(n)
+                    break
+        for m in available_models:
+            n = _name_suffix(getattr(m, "name", ""))
+            if n not in candidate_names and _supports_generate(m):
+                candidate_names.append(n)
+        if not candidate_names:
+            candidate_names = preferred_order[:]
+
+        last_err = None
+        for model_name in candidate_names:
+            try:
+                _log.info("elab_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+                resp = _build_model(model_name).generate_content(prompt)
+                break
+            except Exception as e:
+                last_err = e
+                continue
+        else:
+            _log.warning(
+                "elab_model_selection_failed domain=%s skill=%s err=%s",
+                req.domain,
+                req.skill,
+                str(last_err)[:120] if last_err else "unknown",
+            )
+            return _fallback_stub()
+
         text = (resp.text or "").strip()
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
-        data = json.loads(text)
+        # First attempt parse
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            # Minimal cleanup for common fence/escape issues
+            text = text.replace("\\n", " ")
+            data = json.loads(text)
+
         ok, cleaned, reasons, flags = validate_elaboration_payload(data or {})
         if not ok:
             return _fallback_stub()
@@ -651,6 +718,7 @@ def elaborate(req: ElaborateRequest):
             guardrails={"blocked": False, "reasons": reasons, "flags": flags},
         )
     except Exception:
+        _log.exception("elab_unhandled_error domain=%s skill=%s", req.domain, req.skill)
         return _fallback_stub()
 
 
