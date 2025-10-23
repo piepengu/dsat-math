@@ -279,27 +279,26 @@ function App() {
     }
 
     const shouldRenderAsBlock = (text: string) => {
-        // If there are environments or obvious math macros but no $ delimiters, render as block
-        if (/\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/.test(text)) return true
-        const hasMathMacros = /(\\frac|\\sqrt|\\sum|\\int|\\left|\\right|\\begin|\\end|\^|_)/.test(text)
-        const hasDelimiters = /\$[^$]+\$|\$\$[\s\S]*?\$\$/.test(text)
-        return hasMathMacros && !hasDelimiters
+        // Render as block only for explicit block delimiters or full environments
+        if (/^\s*\\\[[\s\S]*?\\\]\s*$/.test(text)) return true
+        if (/^\s*\$\$[\s\S]*?\$\$\s*$/.test(text)) return true
+        if (/^\s*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}\s*$/.test(text)) return true
+        return false
     }
 
     const renderWithEnvironments = (text: string) => {
         const envRe = /(\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})/g
         const parts = text.split(envRe)
-        return parts.map((seg, i) =>
-            envRe.test(seg)
-                ? (
+        return parts.map((seg, i) => {
+            if (seg.match(/^\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}$/)) {
+                return (
                     <div key={`env-${i}`} className="my-2">
                         <BlockMath math={seg} />
                     </div>
                 )
-                : (
-                    <span key={`txt-${i}`}>{renderInlineMath(seg)}</span>
-                )
-        )
+            }
+            return <span key={`txt-${i}`}>{renderInlineMath(seg)}</span>
+        })
     }
 
     const maybeRenderPlainText = (text: string) => {
