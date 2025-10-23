@@ -1106,7 +1106,7 @@ def generate_ai(req: GenerateAIRequest):
 
         # Light normalization of choices before validation to satisfy expected formats
         def _normalize_choices(skill: str, vals: list) -> list:
-            out = []
+            out: list[str] = []
             for c in (vals or [])[:4]:
                 s = str(c).strip()
                 # Common bracket fixes and separators
@@ -1118,7 +1118,7 @@ def generate_ai(req: GenerateAIRequest):
                     if "," in s:
                         if not (s.startswith("(") and s.endswith(")")):
                             s = f"({s})"
-        else:
+                    else:
                         # Try to coerce space/and separated into a pair
                         parts = re.split(r"\s+and\s+|\s+", s)
                         parts = [p for p in parts if p]
@@ -1132,28 +1132,26 @@ def generate_ai(req: GenerateAIRequest):
                     if s.count(",") == 2 and not (s.startswith("(") and s.endswith(")")):
                         s = f"({s})"
                 out.append(s)
+
             # Ensure 4 choices by repeating last if fewer
             while len(out) < 4:
                 out.append(out[-1] if out else "0")
+
             # Enforce uniqueness (last-resort tweaks that preserve value semantics)
-            seen = set()
+            seen: set[str] = set()
             for i, s in enumerate(out):
                 t = s
-                bump = 0
                 while t in seen:
-                    bump += 1
-            if req.skill in (
-                "linear_equation",
-                "two_step_equation",
-                "exponential_solve",
-                "rational_equation",
-                "proportion",
-                "unit_rate",
-            ):
-                        t = f"({s}) + 0"
-                    elif (
-                        req.skill in ("linear_system_2x2", "quadratic_roots") and s.startswith("(") and s.endswith(")")
+                    if skill in (
+                        "linear_equation",
+                        "two_step_equation",
+                        "exponential_solve",
+                        "rational_equation",
+                        "proportion",
+                        "unit_rate",
                     ):
+                        t = f"({s}) + 0"
+                    elif skill in ("linear_system_2x2", "quadratic_roots") and s.startswith("(") and s.endswith(")"):
                         # Insert +0 inside the tuple on the last value: (a, b+0)
                         inner = s[1:-1]
                         parts = [p.strip() for p in inner.split(",")]
@@ -1162,7 +1160,7 @@ def generate_ai(req: GenerateAIRequest):
                             t = f"({', '.join(parts)})"
                         else:
                             t = f"({s}) + 0"
-                    elif req.skill in ("linear_system_3x3",) and s.startswith("(") and s.endswith(")"):
+                    elif skill in ("linear_system_3x3",) and s.startswith("(") and s.endswith(")"):
                         inner = s[1:-1]
                         parts = [p.strip() for p in inner.split(",")]
                         if len(parts) >= 3:
@@ -1182,7 +1180,7 @@ def generate_ai(req: GenerateAIRequest):
             # Coerce correct_index into range [0,3]
             try:
                 ci = int(data.get("correct_index", 0))
-        except Exception:
+            except Exception:
                 ci = 0
             if ci < 0 or ci >= 4:
                 ci = 0
