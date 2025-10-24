@@ -643,14 +643,47 @@ def elaborate(req: ElaborateRequest):
                 generation_config={"response_mime_type": "application/json"},
             )
 
-        # Try models in order of preference (restore working logic)
-        preferred_models = [
+        # Discover available models and choose one that supports generateContent
+        try:
+            available_models = list(genai.list_models())
+        except Exception:
+            available_models = []
+
+        def _supports_generate(m) -> bool:
+            methods = getattr(m, "supported_generation_methods", []) or []
+            return "generateContent" in methods or "generate_content" in methods
+
+        def _name_suffix(n: str) -> str:
+            return n.split("/")[-1] if "/" in n else n
+
+        preferred_order = [
             "gemini-1.5-flash",
             "gemini-1.5-flash-001",
+            "gemini-1.5-flash-latest",
+            "gemini-1.0-pro",
+            "gemini-pro",
         ]
 
+        candidate_names = []
+        # Add preferred if present in list_models
+        for pref in preferred_order:
+            for m in available_models:
+                n = _name_suffix(getattr(m, "name", ""))
+                if pref in n and _supports_generate(m):
+                    candidate_names.append(n)
+                    break
+        # Then any other model that supports generateContent
+        for m in available_models:
+            n = _name_suffix(getattr(m, "name", ""))
+            if n not in candidate_names and _supports_generate(m):
+                candidate_names.append(n)
+
+        # Fallback to static preferences if list_models returned nothing
+        if not candidate_names:
+            candidate_names = preferred_order[:]
+
         last_err = None
-        for model_name in preferred_models:
+        for model_name in candidate_names:
             try:
                 _log.info("elab_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
                 resp = _build_model(model_name).generate_content(prompt)
@@ -977,14 +1010,47 @@ def generate_ai(req: GenerateAIRequest):
             generation_config={"response_mime_type": "application/json"},
         )
 
-    # Try models in order of preference (restore working logic)
-    preferred_models = [
+    # Discover available models and choose one that supports generateContent
+    try:
+        available_models = list(genai.list_models())
+    except Exception:
+        available_models = []
+
+    def _supports_generate(m) -> bool:
+        methods = getattr(m, "supported_generation_methods", []) or []
+        return "generateContent" in methods or "generate_content" in methods
+
+    def _name_suffix(n: str) -> str:
+        return n.split("/")[-1] if "/" in n else n
+
+    preferred_order = [
         "gemini-1.5-flash",
         "gemini-1.5-flash-001",
+        "gemini-1.5-flash-latest",
+        "gemini-1.0-pro",
+        "gemini-pro",
     ]
 
+    candidate_names = []
+    # Add preferred if present in list_models
+    for pref in preferred_order:
+        for m in available_models:
+            n = _name_suffix(getattr(m, "name", ""))
+            if pref in n and _supports_generate(m):
+                candidate_names.append(n)
+                break
+    # Then any other model that supports generateContent
+    for m in available_models:
+        n = _name_suffix(getattr(m, "name", ""))
+        if n not in candidate_names and _supports_generate(m):
+            candidate_names.append(n)
+
+    # Fallback to static preferences if list_models returned nothing
+    if not candidate_names:
+        candidate_names = preferred_order[:]
+
     last_err = None
-    for model_name in preferred_models:
+    for model_name in candidate_names:
         try:
             _log.info("ai_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
             resp = _build_model(model_name).generate_content(prompt)
