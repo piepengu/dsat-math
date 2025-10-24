@@ -643,26 +643,32 @@ def elaborate(req: ElaborateRequest):
                 generation_config={"response_mime_type": "application/json"},
             )
 
-        # Use gemini-1.5-flash directly (fastest model) without discovery
-        # This avoids the slow list_models() call and multiple retries
-        model_name = "gemini-1.5-flash"
-        try:
-            _log.info("elab_model_generate name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-            resp = _build_model(model_name).generate_content(prompt)
-        except Exception as e:
-            # Try one fallback model if flash fails
+        # Try models in order of preference (restore working logic)
+        preferred_models = [
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-001",
+            "gemini-1.5-flash-latest",
+            "gemini-1.0-pro",
+            "gemini-pro",
+        ]
+
+        last_err = None
+        for model_name in preferred_models:
             try:
-                model_name = "gemini-1.5-flash-001"
-                _log.info("elab_model_retry name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+                _log.info("elab_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
                 resp = _build_model(model_name).generate_content(prompt)
-            except Exception as e2:
-                _log.warning(
-                    "elab_model_failed domain=%s skill=%s err=%s",
-                    req.domain,
-                    req.skill,
-                    str(e2)[:120] if e2 else "unknown",
-                )
-                return _fallback_stub()
+                break
+            except Exception as e:
+                last_err = e
+                continue
+        else:
+            _log.warning(
+                "elab_model_selection_failed domain=%s skill=%s err=%s",
+                req.domain,
+                req.skill,
+                str(last_err)[:120] if last_err else "unknown",
+            )
+            return _fallback_stub()
 
         text = (resp.text or "").strip()
         if text.startswith("```"):
@@ -974,30 +980,36 @@ def generate_ai(req: GenerateAIRequest):
             generation_config={"response_mime_type": "application/json"},
         )
 
-    # Use gemini-1.5-flash directly (fastest model) without discovery
-    # This avoids the slow list_models() call and multiple retries
-    model_name = "gemini-1.5-flash"
-    try:
-        _log.info("ai_model_generate name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-        resp = _build_model(model_name).generate_content(prompt)
-    except Exception as e:
-        # Try one fallback model if flash fails
+    # Try models in order of preference (restore working logic)
+    preferred_models = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-flash-latest",
+        "gemini-1.0-pro",
+        "gemini-pro",
+    ]
+
+    last_err = None
+    for model_name in preferred_models:
         try:
-            model_name = "gemini-1.5-flash-001"
-            _log.info("ai_model_retry name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+            _log.info("ai_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
             resp = _build_model(model_name).generate_content(prompt)
-        except Exception as e2:
-            try:
-                _log.warning(
-                    "model_failed domain=%s skill=%s err=%s",
-                    req.domain,
-                    req.skill,
-                    str(e2)[:120] if e2 else "unknown",
-                )
-                app.state.guardrails_metrics["fallback_total"] += 1
-            except Exception:
-                pass
-            return _fallback_mc()
+            break
+        except Exception as e:
+            last_err = e
+            continue
+    else:
+        try:
+            _log.warning(
+                "model_selection_failed domain=%s skill=%s err=%s",
+                req.domain,
+                req.skill,
+                str(last_err)[:120] if last_err else "unknown",
+            )
+            app.state.guardrails_metrics["fallback_total"] += 1
+        except Exception:
+            pass
+        return _fallback_mc()
 
     try:
         text = (resp.text or "").strip()
