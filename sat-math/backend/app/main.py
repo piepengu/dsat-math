@@ -649,7 +649,6 @@ def elaborate(req: ElaborateRequest):
             "gemini-1.5-flash-001",
             "gemini-1.5-flash-latest",
             "gemini-1.0-pro",
-            "gemini-1.5-pro",
         ]
 
         last_err = None
@@ -986,7 +985,6 @@ def generate_ai(req: GenerateAIRequest):
         "gemini-1.5-flash-001",
         "gemini-1.5-flash-latest",
         "gemini-1.0-pro",
-        "gemini-1.5-pro",
     ]
 
     last_err = None
