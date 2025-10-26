@@ -4,6 +4,19 @@ import { InlineMath } from 'react-katex'
 // Supports $...$, \(...\), and treats \[...\] inline when encountered in text.
 // Includes fixes for common malformed fractions and exponent groups.
 export const renderInlineMath = (text: string) => {
+    const normalizePlainText = (input: string): string => {
+        let t = String(input)
+        // Join letter-by-letter words like "p l u s" -> "plus"
+        t = t.replace(/\b(?:[A-Za-z]\s+){2,}[A-Za-z]\b/g, (m) => m.replace(/\s+/g, ''))
+        // Collapse duplicate single-letter variables like "h h" -> "h"
+        t = t.replace(/\b([A-Za-z])\s+\1\b/g, '$1')
+        // Insert spaces between digits and letters when glued: 80plus -> 80 plus; rate40 -> rate 40
+        t = t.replace(/(\d)([A-Za-z])/g, '$1 $2')
+        t = t.replace(/([A-Za-z])(\d)/g, '$1 $2')
+        // Normalize excess whitespace
+        t = t.replace(/\s+/g, ' ').trim()
+        return t
+    }
     const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
     return parts.map((seg, i) => {
         const isDollar = seg.startsWith('$') && seg.endsWith('$')
@@ -17,7 +30,7 @@ export const renderInlineMath = (text: string) => {
             inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
             return <InlineMath key={i} math={inner} />
         }
-        const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
+        const cleaned = normalizePlainText(seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' '))
         return <span key={i}>{cleaned}</span>
     })
 }
