@@ -358,3 +358,8 @@ Planned for next session (2025-10-24)
 - **Commit and Push Progress Documentation**
   - Commit the updated `progress_today.md` file with today's accomplishments and planned tasks.
   - Push changes to GitHub repository to preserve progress documentation.
+
+Updates (2025-10-26)
+- Planning
+  - Easiest: streaks (per-skill correct streak + daily activity streak). Minimal schema/UI; computed incrementally.
+  - Next easiest: basic achievements (first solve, 5-correct streak, 7-day streak) built on those streaks.
