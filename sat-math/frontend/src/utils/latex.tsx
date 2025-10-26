@@ -13,6 +13,12 @@ export const renderInlineMath = (text: string) => {
         // Insert spaces between digits and letters when glued: 80plus -> 80 plus; rate40 -> rate 40
         t = t.replace(/(\d)([A-Za-z])/g, '$1 $2')
         t = t.replace(/([A-Za-z])(\d)/g, '$1 $2')
+        // Insert a space at sentence boundaries when missing: "ounce.Acustomer" -> "ounce. Acustomer"
+        t = t.replace(/([a-z])([A-Z])/g, '$1 $2')
+        // Keep currency tight to numbers: "$ 15.00" -> "$15.00"
+        t = t.replace(/\$\s+(\d)/g, '$$$1')
+        // Common glued phrases
+        t = t.replace(/\bperounce\b/gi, (m) => m[0] === 'P' ? 'Per ounce' : 'per ounce')
         // Normalize excess whitespace
         t = t.replace(/\s+/g, ' ').trim()
         return t
