@@ -1,8 +1,9 @@
 import axios from 'axios'
 import 'katex/dist/katex.min.css'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { BlockMath, InlineMath } from 'react-katex'
+import { BlockMath } from 'react-katex'
 import './App.css'
+import { renderInlineMath as renderInlineMathShared } from './utils/latex'
 
 type Domain = 'Algebra' | 'PSD' | 'Advanced' | 'Geometry'
 type Skill =
@@ -226,24 +227,7 @@ function App() {
 
     const allowedSkills = useMemo(() => skillOptions[domain], [domain])
 
-    const renderInlineMath = (text: string) => {
-        // Support inline delimiters: $...$ and \(...\) and treat \[...\] inline for choices
-        const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
-        return parts.map((seg, i) => {
-            const isDollar = seg.startsWith('$') && seg.endsWith('$')
-            const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
-            const isBracket = seg.startsWith('\\[') && seg.endsWith('\\]')
-            if (isDollar || isParen || isBracket) {
-                let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
-                // Fix common malformed fractions like \frac(8)(5) → \frac{8}{5}
-                inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
-                inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
-                return <InlineMath key={i} math={inner} />
-            }
-            const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
-            return <span key={i}>{cleaned}</span>
-        })
-    }
+    const renderInlineMath = (text: string) => renderInlineMathShared(text)
 
     // Ensure proper line breaks inside environments like cases/aligned/array
     const fixEnvNewlines = (text: string) => {
@@ -1153,17 +1137,8 @@ function ElaborateTutor(props: {
         common_mistake?: string
     }>(null)
 
-    // Local inline math renderer (mirrors App's renderer)
-    const renderInline = (text: string) =>
-        String(text)
-            .split(/(\$[^$]+\$)/g)
-            .map((seg, i) => {
-                if (seg.startsWith('$') && seg.endsWith('$')) {
-                    return <InlineMath key={i} math={seg.slice(1, -1)} />
-                }
-                const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
-                return <span key={i}>{cleaned}</span>
-            })
+    // Use shared inline math renderer
+    const renderInline = (text: string) => renderInlineMathShared(text)
 
     const submit = async () => {
         if (!q.trim()) return

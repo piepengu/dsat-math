@@ -1,0 +1,25 @@
+import { InlineMath } from 'react-katex'
+
+// Shared inline LaTeX renderer used across the app.
+// Supports $...$, \(...\), and treats \[...\] inline when encountered in text.
+// Includes fixes for common malformed fractions and exponent groups.
+export const renderInlineMath = (text: string) => {
+    const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
+    return parts.map((seg, i) => {
+        const isDollar = seg.startsWith('$') && seg.endsWith('$')
+        const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
+        const isBracket = seg.startsWith('\\[') && seg.endsWith('\\]')
+        if (isDollar || isParen || isBracket) {
+            let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
+            // Fix common malformed fractions like \frac(8)(5) → {\frac{8}{5}}
+            inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
+            // Ensure exponents like ^(2x+1) become ^{2x+1}
+            inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
+            return <InlineMath key={i} math={inner} />
+        }
+        const cleaned = seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' ')
+        return <span key={i}>{cleaned}</span>
+    })
+}
+
+

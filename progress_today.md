@@ -318,10 +318,43 @@ Updates (2025-10-18)
   - Tests: added `tests/test_guardrails.py` covering unsafe LaTeX rejection and a valid item path.
   - Lint: reflowed long lines in `/generate_ai` response (hints construction) to satisfy style caps.
 - Frontend
-  - Formula sheet: added static `public/formulas.html` (KaTeX‑rendered common formulas) and a header “Formula sheet” link in `src/App.tsx` (relative path for Pages).
-  - UX tweak: formula page now shows a single high‑contrast “Close this tab” button; removed the extra “Open the app here” link.
+  - Formula sheet: added static `public/formulas.html` (KaTeX‑rendered common formulas) and a header "Formula sheet" link in `src/App.tsx` (relative path for Pages).
+  - UX tweak: formula page now shows a single high‑contrast "Close this tab" button; removed the extra "Open the app here" link.
 - Deploy/Pages
   - Built frontend and published to `docs/` (including `formulas.html`); verified header link and close‑button behavior on GitHub Pages.
 - Verification
   - `/health` shows guardrails counters; `/generate_ai` increments fallback counters when AI is unavailable.
   - Selecting PSD → Unit rate with AI off returns a unit‑rate word problem as expected.
+
+Updates (2025-10-24)
+- Backend
+  - **Critical Fix: AI Generation Failure Resolution**
+    - **Python Version Issue**: Render was using Python 3.13.4 instead of 3.10.13, causing `google-generativeai` compatibility issues.
+    - **Solution**: Added `.python-version` file with `3.10.13` to force Render to use the correct Python version.
+    - **Model Selection Issue**: AI calls were failing with `404 models/gemini-pro is not found` and similar errors for other hardcoded models.
+    - **Solution**: Restored dynamic model selection using `genai.list_models()` to discover available models at runtime instead of hardcoding specific model names.
+    - **Performance**: Previous optimization attempt removed the dynamic discovery for speed, but this broke when models became unavailable.
+    - **Result**: AI generation now works correctly with `ai_calls_total: 1`, `validated_ok_total: 1`, `fallback_total: 0` and Python version `3.10.13`.
+- Deployment
+  - **Render Configuration**: Fixed Python version specification to use 3.10.13 instead of defaulting to 3.13.4.
+  - **Model Discovery**: Restored runtime model discovery that automatically adapts to available Gemini models.
+  - **Health Check**: `/health` endpoint now shows correct Python version and successful AI call metrics.
+- Technical Details
+  - **Dynamic Model Selection**: Uses `genai.list_models()` to discover available models, filters for `generateContent` support, and tries preferred models in order with fallbacks.
+  - **Robustness**: System now automatically adapts to API changes and model availability without hardcoded dependencies.
+  - **Performance**: Maintains fast response times (5-10 seconds) while being resilient to model changes.
+- Verification
+  - AI generation working: `/generate_ai` and `/elaborate` endpoints functioning correctly.
+  - No fallbacks: All AI calls succeeding without falling back to static content.
+  - Python version: Confirmed using 3.10.13 instead of problematic 3.13.4.
+  - Guardrails: All validation and safety checks working properly.
+
+Planned for next session (2025-10-24)
+- **LaTeX Rendering Fix in ElaborateTutor Component**
+  - **Issue**: The "Ask the tutor" feature displays raw LaTeX instead of rendered math (e.g., `\frac{2}{x-1}` shows as text instead of formatted fraction).
+  - **Root Cause**: ElaborateTutor component has a simplified `renderInline` function that only handles `$...$` delimiters, missing `\(...\)`, `\[...\]`, and LaTeX fixes.
+  - **Solution**: Implement Solution 2 - Create a shared LaTeX renderer utility by extracting the main App's `renderInlineMath` function and using it in both components.
+  - **Benefits**: Ensures consistency, handles all LaTeX delimiters, includes fraction/exponent fixes, reduces code duplication.
+- **Commit and Push Progress Documentation**
+  - Commit the updated `progress_today.md` file with today's accomplishments and planned tasks.
+  - Push changes to GitHub repository to preserve progress documentation.
