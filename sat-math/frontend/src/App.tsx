@@ -76,6 +76,14 @@ type GenerateAIResponse = {
     }
 }
 
+type StreaksResponse = {
+    user_id: string
+    current_streak_days: number
+    longest_streak_days: number
+    problems_solved_today: number
+    badges_today: string[]
+}
+
 function App() {
     const [domain, setDomain] = useState<Domain>('Algebra')
     const [skill, setSkill] = useState<Skill>('linear_equation')
@@ -109,6 +117,10 @@ function App() {
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
     const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
     const [missed, setMissed] = useState<Array<{ domain: Domain; skill: Skill; difficulty: 'easy' | 'medium' | 'hard' }>>([])
+
+    // Streaks UI state
+    const [streaks, setStreaks] = useState<StreaksResponse | null>(null)
+    const [streaksLoading, setStreaksLoading] = useState<boolean>(false)
 
     // Default rich explanations for AI items (client-side only)
     const aiExplanationDefaults: Partial<Record<Skill, { concept?: string; plan?: string; quick_check?: string; common_mistake?: string }>> = {
@@ -979,6 +991,25 @@ function App() {
                         My Stats
                     </button>
                     <button
+                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-gray-800 hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        disabled={streaksLoading || !userId}
+                        onClick={async () => {
+                            if (!userId) return
+                            setStreaksLoading(true)
+                            try {
+                                const resp = await axios.get<StreaksResponse>(`${apiBase}/streaks`, { params: { user_id: userId } })
+                                setStreaks(resp.data)
+                            } catch (e: any) {
+                                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                setLastError(msg)
+                            } finally {
+                                setStreaksLoading(false)
+                            }
+                        }}
+                    >
+                        {streaksLoading ? 'Loading…' : 'My Streaks'}
+                    </button>
+                    <button
                         className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                         disabled={loading || !userId}
                         onClick={async () => {
@@ -1105,6 +1136,26 @@ function App() {
                                 </table>
                             )}
                         </>
+                    )}
+                    {streaks && (
+                        <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
+                            <div className="font-semibold mb-1">My Streak</div>
+                            <div className="text-sm text-gray-800 flex flex-wrap gap-4">
+                                <div>Current: <span className="font-semibold">{streaks.current_streak_days}</span> day(s)</div>
+                                <div>Longest: <span className="font-semibold">{streaks.longest_streak_days}</span> day(s)</div>
+                                <div>Today: <span className="font-semibold">{streaks.problems_solved_today}</span> problem(s)</div>
+                            </div>
+                            {streaks.badges_today && streaks.badges_today.length > 0 && (
+                                <div className="mt-2 text-sm text-gray-800">
+                                    <div className="mb-1">Badges earned today:</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {streaks.badges_today.map((b, i) => (
+                                            <span key={i} className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs">{b}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
