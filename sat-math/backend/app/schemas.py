@@ -171,3 +171,11 @@ class ElaborateResponse(BaseModel):
     elaboration: ElaboratePayload
     usage_ms: int = 0
     guardrails: Optional[Dict[str, object]] = None
+
+
+class StreaksResponse(BaseModel):
+    user_id: str
+    current_streak_days: int
+    longest_streak_days: int
+    problems_solved_today: int
+    badges_today: List[str]

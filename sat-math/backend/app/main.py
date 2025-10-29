@@ -64,7 +64,14 @@ from .schemas import (
     NextResponse,
     ResetStatsRequest,
     ResetStatsResponse,
+    StreaksResponse,
 )
+
+from datetime import datetime, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # Python <3.9 fallback (not expected here)
+    ZoneInfo = None
 
 try:
     import google.generativeai as genai
@@ -1393,3 +1400,72 @@ def generate_ai(req: GenerateAIRequest):
         except Exception:
             pass
         return _fallback_mc()
+
+
+@app.get("/streaks", response_model=StreaksResponse)
+def streaks(user_id: str, db: Session = Depends(get_db)):
+    tz = ZoneInfo("America/Chicago") if ZoneInfo else None
+    now_utc = datetime.now(timezone.utc)
+    now_ct = now_utc.astimezone(tz) if tz else now_utc
+    today = now_ct.date()
+
+    # Pull recent attempts (bounded) and aggregate by Central-date
+    rows = (
+        db.query(Attempt)
+        .filter(Attempt.user_id == (user_id or "anonymous"))
+        .order_by(Attempt.id.desc())
+        .limit(2000)
+        .all()
+    )
+
+    from collections import defaultdict
+
+    per_day_counts = defaultdict(int)
+    for r in rows:
+        dt = getattr(r, "created_at", None)
+        if not dt:
+            continue
+        if dt.tzinfo is None:
+            dt_utc = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt_utc = dt.astimezone(timezone.utc)
+        dt_ct = dt_utc.astimezone(tz) if tz else dt_utc
+        d = dt_ct.date()
+        per_day_counts[d] += 1
+
+    problems_solved_today = int(per_day_counts.get(today, 0))
+
+    thresholds = [5, 10, 20, 50]
+    badges_today = [f"daily_{n}" for n in thresholds if problems_solved_today >= n]
+
+    # Current streak: consecutive days ending today with >=1 attempt
+    cur_streak = 0
+    cursor = today
+    while per_day_counts.get(cursor, 0) > 0:
+        cur_streak += 1
+        cursor = cursor - timedelta(days=1)
+
+    # Longest streak across available window
+    longest = 0
+    if per_day_counts:
+        days_sorted = sorted(per_day_counts.keys())
+        run = 0
+        prev = None
+        for d in days_sorted:
+            if prev is None or d == prev + timedelta(days=1):
+                run = run + 1 if prev is not None else 1
+            else:
+                if run > longest:
+                    longest = run
+                run = 1
+            prev = d
+        if run > longest:
+            longest = run
+
+    return StreaksResponse(
+        user_id=(user_id or "anonymous"),
+        current_streak_days=int(cur_streak),
+        longest_streak_days=int(longest),
+        problems_solved_today=problems_solved_today,
+        badges_today=badges_today,
+    )
