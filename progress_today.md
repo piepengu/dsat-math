@@ -413,3 +413,48 @@ Updates (2025-10-26)
   - Monitor AI response times after Phase 1 deployment to verify speed improvements.
   - Consider Phase 2-4 optimizations (prompt optimization, timeout tuning) if further speed gains needed.
   - Add skill mastery indicators and achievement system (next priority after streaks).
+
+Updates (2025-11-05)
+- Frontend
+  - **LaTeX Normalization Enhancement**
+    - Enhanced normalization for AI-generated questions to handle formatting issues.
+    - Added comprehensive glued phrase detection: `plusanhourlyrateof`, `plusanhourlyrate`, `anhourlyrate`, `plusan`, `rateof`, `persquare`, `percubic`.
+    - Added common question word normalization: `forhowmany` → "for how many", `howmany` → "how many", `whatis` → "what is", `whatare` → "what are".
+    - Fixes formatting issues like "80plusanhourlyrateof40" → "80 plus an hourly rate of 40".
+    - Maintains existing fixes: digit-letter spacing, duplicate single-letter variables, currency spacing.
+
+- Backend
+  - **Basic Achievements System**
+    - Added `AchievementsResponse` schema with `user_id` and `achievements` list.
+    - Implemented `GET /achievements` endpoint that calculates three achievements:
+      - `first_solve`: User has at least one correct attempt.
+      - `five_correct_streak`: User has 5 consecutive correct answers (maximum streak tracked).
+      - `seven_day_streak`: Current daily streak >= 7 days (uses same logic as streaks endpoint).
+    - Reuses existing `Attempt` model and streaks calculation logic for efficiency.
+
+- Frontend
+  - **Achievements UI Implementation**
+    - Added `AchievementsResponse` type definition.
+    - Added "My Achievements" button (purple styling) next to "My Streaks" button.
+    - Displays achievement badges with friendly names:
+      - "First Solve" for `first_solve`
+      - "5 Correct in a Row" for `five_correct_streak`
+      - "7 Day Streak" for `seven_day_streak`
+    - Shows "No achievements yet. Keep practicing!" message when empty.
+    - Badges styled with purple background (`bg-purple-100 text-purple-800`).
+
+- Testing & Verification
+  - **End-to-End Testing Completed**
+    - LaTeX normalization: Verified enhancement handles glued phrases correctly.
+    - Achievements endpoint: Tested and verified working after Render deployment.
+    - Achievement earning: Solved a problem correctly → "First Solve" achievement appeared.
+    - API response verified: `{"user_id": "u_osrnedm1", "achievements": ["first_solve"]}`.
+    - UI display: Achievement badges render correctly with proper styling.
+
+- Deployment
+  - All changes committed and pushed to GitHub (backend and frontend).
+  - LaTeX normalization fix: Commit `5de3264`.
+  - Achievements backend: Commit `fb940e9`.
+  - Achievements frontend: Commit `282ae80`.
+  - Render auto-deployed backend changes successfully.
+  - Features tested and verified working in production.
