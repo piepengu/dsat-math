@@ -15,10 +15,22 @@ export const renderInlineMath = (text: string) => {
         t = t.replace(/([A-Za-z])(\d)/g, '$1 $2')
         // Insert a space at sentence boundaries when missing: "ounce.Acustomer" -> "ounce. Acustomer"
         t = t.replace(/([a-z])([A-Z])/g, '$1 $2')
+        // Fix common glued phrases (order matters - do longer patterns first)
+        t = t.replace(/\bplusanhourlyrateof\b/gi, (m) => m[0] === 'P' ? 'Plus an hourly rate of' : 'plus an hourly rate of')
+        t = t.replace(/\bplusanhourlyrate\b/gi, (m) => m[0] === 'P' ? 'Plus an hourly rate' : 'plus an hourly rate')
+        t = t.replace(/\banhourlyrate\b/gi, (m) => m[0] === 'A' ? 'An hourly rate' : 'an hourly rate')
+        t = t.replace(/\bplusan\b/gi, (m) => m[0] === 'P' ? 'Plus an' : 'plus an')
+        t = t.replace(/\brateof\b/gi, (m) => m[0] === 'R' ? 'Rate of' : 'rate of')
+        t = t.replace(/\bperounce\b/gi, (m) => m[0] === 'P' ? 'Per ounce' : 'per ounce')
+        t = t.replace(/\bpersquare\b/gi, (m) => m[0] === 'P' ? 'Per square' : 'per square')
+        t = t.replace(/\bpercubic\b/gi, (m) => m[0] === 'P' ? 'Per cubic' : 'per cubic')
+        // Handle common glued function words
+        t = t.replace(/\bforhowmany\b/gi, (m) => m[0] === 'F' ? 'For how many' : 'for how many')
+        t = t.replace(/\bhowmany\b/gi, (m) => m[0] === 'H' ? 'How many' : 'how many')
+        t = t.replace(/\bwhatis\b/gi, (m) => m[0] === 'W' ? 'What is' : 'what is')
+        t = t.replace(/\bwhatare\b/gi, (m) => m[0] === 'W' ? 'What are' : 'what are')
         // Keep currency tight to numbers: "$ 15.00" -> "$15.00"
         t = t.replace(/\$\s+(\d)/g, '$$$1')
-        // Common glued phrases
-        t = t.replace(/\bperounce\b/gi, (m) => m[0] === 'P' ? 'Per ounce' : 'per ounce')
         // Normalize excess whitespace
         t = t.replace(/\s+/g, ' ').trim()
         return t
