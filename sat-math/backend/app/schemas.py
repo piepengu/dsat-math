@@ -179,3 +179,8 @@ class StreaksResponse(BaseModel):
     longest_streak_days: int
     problems_solved_today: int
     badges_today: List[str]
+
+
+class AchievementsResponse(BaseModel):
+    user_id: str
+    achievements: List[str]  # e.g., ["first_solve", "five_correct_streak", "seven_day_streak"]

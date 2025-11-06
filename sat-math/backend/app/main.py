@@ -48,6 +48,7 @@ from .generators import (
 from .guardrails import validate_ai_payload, validate_elaboration_payload
 from .models import Attempt
 from .schemas import (
+    AchievementsResponse,
     AttemptAIRequest,
     AttemptAIResponse,
     AttemptOut,
@@ -1517,4 +1518,74 @@ def streaks(user_id: str, db: Session = Depends(get_db)):
         longest_streak_days=int(longest),
         problems_solved_today=problems_solved_today,
         badges_today=badges_today,
+    )
+
+
+@app.get("/achievements", response_model=AchievementsResponse)
+def achievements(user_id: str, db: Session = Depends(get_db)):
+    """Calculate user achievements based on their attempt history."""
+    uid = user_id or "anonymous"
+    
+    # Get all attempts for the user, ordered by ID (which reflects chronological order)
+    rows = (
+        db.query(Attempt)
+        .filter(Attempt.user_id == uid)
+        .order_by(Attempt.id.asc())
+        .all()
+    )
+    
+    achievements_list = []
+    
+    # 1. First solve: Has at least one correct attempt
+    has_correct = any(r.correct for r in rows)
+    if has_correct:
+        achievements_list.append("first_solve")
+    
+    # 2. Five correct streak: Check for 5 consecutive correct answers
+    consecutive_correct = 0
+    max_consecutive_correct = 0
+    for r in rows:
+        if r.correct:
+            consecutive_correct += 1
+            if consecutive_correct > max_consecutive_correct:
+                max_consecutive_correct = consecutive_correct
+        else:
+            consecutive_correct = 0
+    
+    if max_consecutive_correct >= 5:
+        achievements_list.append("five_correct_streak")
+    
+    # 3. Seven day streak: Use the streaks endpoint logic to check current streak
+    tz = ZoneInfo("America/Chicago") if ZoneInfo else None
+    now_utc = datetime.now(timezone.utc)
+    now_ct = now_utc.astimezone(tz) if tz else now_utc
+    today = now_ct.date()
+    
+    from collections import defaultdict
+    per_day_counts = defaultdict(int)
+    for r in rows:
+        dt = getattr(r, "created_at", None)
+        if not dt:
+            continue
+        if dt.tzinfo is None:
+            dt_utc = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt_utc = dt.astimezone(timezone.utc)
+        dt_ct = dt_utc.astimezone(tz) if tz else dt_utc
+        d = dt_ct.date()
+        per_day_counts[d] += 1
+    
+    # Current streak: consecutive days ending today with >=1 attempt
+    cur_streak = 0
+    cursor = today
+    while per_day_counts.get(cursor, 0) > 0:
+        cur_streak += 1
+        cursor = cursor - timedelta(days=1)
+    
+    if cur_streak >= 7:
+        achievements_list.append("seven_day_streak")
+    
+    return AchievementsResponse(
+        user_id=uid,
+        achievements=achievements_list,
     )
