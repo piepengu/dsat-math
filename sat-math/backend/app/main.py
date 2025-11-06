@@ -115,6 +115,56 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 _log = logging.getLogger("app.guardrails")
 
+# AI model caching infrastructure (Phase 1 optimization)
+if _HAS_GENAI:
+    import time as _cache_time
+    
+    # Cache model discovery results (TTL: 300 seconds = 5 minutes)
+    _model_cache_ttl = 300
+    _model_discovery_cache: dict = {"models": [], "timestamp": 0}
+    _model_instance_cache: dict = {}  # model_name -> model_instance
+    
+    def _get_cached_models() -> list:
+        """Get cached model list or refresh if expired."""
+        now = _cache_time.time()
+        if now - _model_discovery_cache["timestamp"] > _model_cache_ttl:
+            try:
+                api_key = os.getenv("GEMINI_API_KEY")
+                if api_key:
+                    try:
+                        genai.configure(api_key=api_key, api_version="v1")
+                    except Exception:
+                        genai.configure(api_key=api_key)
+                    _model_discovery_cache["models"] = list(genai.list_models())
+                    _model_discovery_cache["timestamp"] = now
+            except Exception:
+                pass
+        return _model_discovery_cache["models"]
+    
+    def _get_model_instance(model_name: str, api_key: str) -> any:
+        """Get cached model instance or create new one."""
+        if model_name not in _model_instance_cache:
+            try:
+                # Ensure API is configured
+                try:
+                    genai.configure(api_key=api_key, api_version="v1")
+                except Exception:
+                    genai.configure(api_key=api_key)
+                _model_instance_cache[model_name] = genai.GenerativeModel(
+                    model_name=model_name,
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "max_output_tokens": 2048,  # Limit output for speed
+                        "temperature": 0.7,  # Consistent but creative
+                    },
+                )
+            except Exception:
+                return None
+        return _model_instance_cache.get(model_name)
+else:
+    _get_cached_models = lambda: []
+    _get_model_instance = lambda name, api_key: None
+
 
 # Lightweight migration for new analytics columns on SQLite
 try:
@@ -629,7 +679,7 @@ def elaborate(req: ElaborateRequest):
         return _fallback_stub()
 
     try:
-        # Prefer stable v1 API
+        # Configure API once (cached via helper)
         try:
             genai.configure(api_key=api_key, api_version="v1")
         except Exception:
@@ -647,18 +697,6 @@ def elaborate(req: ElaborateRequest):
             "Return ONLY JSON."
         )
 
-        def _build_model(name: str):
-            return genai.GenerativeModel(
-                model_name=name,
-                generation_config={"response_mime_type": "application/json"},
-            )
-
-        # Discover available models and choose one that supports generateContent
-        try:
-            available_models = list(genai.list_models())
-        except Exception:
-            available_models = []
-
         def _supports_generate(m) -> bool:
             methods = getattr(m, "supported_generation_methods", []) or []
             return "generateContent" in methods or "generate_content" in methods
@@ -666,13 +704,17 @@ def elaborate(req: ElaborateRequest):
         def _name_suffix(n: str) -> str:
             return n.split("/")[-1] if "/" in n else n
 
+        # Phase 1: Upgrade to gemini-2.5-flash (faster, recommended by Google)
         preferred_order = [
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",  # Even faster fallback
             "gemini-1.5-flash",
             "gemini-1.5-flash-001",
             "gemini-1.5-flash-latest",
-            "gemini-1.0-pro",
-            "gemini-pro",
         ]
+
+        # Use cached model discovery
+        available_models = _get_cached_models()
 
         candidate_names = []
         # Add preferred if present in list_models
@@ -682,32 +724,36 @@ def elaborate(req: ElaborateRequest):
                 if pref in n and _supports_generate(m):
                     candidate_names.append(n)
                     break
-        # Then any other model that supports generateContent
-        for m in available_models:
-            n = _name_suffix(getattr(m, "name", ""))
-            if n not in candidate_names and _supports_generate(m):
-                candidate_names.append(n)
 
         # Fallback to static preferences if list_models returned nothing
         if not candidate_names:
             candidate_names = preferred_order[:]
 
-        last_err = None
-        for model_name in candidate_names:
+        # Try first candidate with cached model instance (Phase 1 optimization)
+        model_name = candidate_names[0] if candidate_names else None
+        if model_name:
             try:
-                _log.info("elab_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-                resp = _build_model(model_name).generate_content(prompt)
-                break
+                model_instance = _get_model_instance(model_name, api_key)
+                if model_instance:
+                    _log.info("elab_model_use name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+                    resp = model_instance.generate_content(prompt)
+                else:
+                    # Fallback: try building fresh instance
+                    model_instance = genai.GenerativeModel(
+                        model_name=model_name,
+                        generation_config={"response_mime_type": "application/json"},
+                    )
+                    resp = model_instance.generate_content(prompt)
             except Exception as e:
-                last_err = e
-                continue
+                _log.warning(
+                    "elab_model_failed name=%s domain=%s skill=%s err=%s",
+                    model_name,
+                    req.domain,
+                    req.skill,
+                    str(e)[:120],
+                )
+                return _fallback_stub()
         else:
-            _log.warning(
-                "elab_model_selection_failed domain=%s skill=%s err=%s",
-                req.domain,
-                req.skill,
-                str(last_err)[:120] if last_err else "unknown",
-            )
             return _fallback_stub()
 
         text = (resp.text or "").strip()
@@ -1014,18 +1060,6 @@ def generate_ai(req: GenerateAIRequest):
         "(e.g., \\frac, \\sqrt). No code fences or extra text."
     )
 
-    def _build_model(name: str):
-        return genai.GenerativeModel(
-            model_name=name,
-            generation_config={"response_mime_type": "application/json"},
-        )
-
-    # Discover available models and choose one that supports generateContent
-    try:
-        available_models = list(genai.list_models())
-    except Exception:
-        available_models = []
-
     def _supports_generate(m) -> bool:
         methods = getattr(m, "supported_generation_methods", []) or []
         return "generateContent" in methods or "generate_content" in methods
@@ -1033,13 +1067,17 @@ def generate_ai(req: GenerateAIRequest):
     def _name_suffix(n: str) -> str:
         return n.split("/")[-1] if "/" in n else n
 
+    # Phase 1: Upgrade to gemini-2.5-flash (faster, recommended by Google)
     preferred_order = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",  # Even faster fallback
         "gemini-1.5-flash",
         "gemini-1.5-flash-001",
         "gemini-1.5-flash-latest",
-        "gemini-1.0-pro",
-        "gemini-pro",
     ]
+
+    # Use cached model discovery
+    available_models = _get_cached_models()
 
     candidate_names = []
     # Add preferred if present in list_models
@@ -1049,33 +1087,41 @@ def generate_ai(req: GenerateAIRequest):
             if pref in n and _supports_generate(m):
                 candidate_names.append(n)
                 break
-    # Then any other model that supports generateContent
-    for m in available_models:
-        n = _name_suffix(getattr(m, "name", ""))
-        if n not in candidate_names and _supports_generate(m):
-            candidate_names.append(n)
 
     # Fallback to static preferences if list_models returned nothing
     if not candidate_names:
         candidate_names = preferred_order[:]
 
-    last_err = None
-    for model_name in candidate_names:
+    # Try first candidate with cached model instance (Phase 1 optimization)
+    model_name = candidate_names[0] if candidate_names else None
+    if model_name:
         try:
-            _log.info("ai_model_try name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-            resp = _build_model(model_name).generate_content(prompt)
-            break
+            model_instance = _get_model_instance(model_name, api_key)
+            if model_instance:
+                _log.info("ai_model_use name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
+                resp = model_instance.generate_content(prompt)
+            else:
+                # Fallback: try building fresh instance
+                model_instance = genai.GenerativeModel(
+                    model_name=model_name,
+                    generation_config={"response_mime_type": "application/json"},
+                )
+                resp = model_instance.generate_content(prompt)
         except Exception as e:
-            last_err = e
-            continue
+            try:
+                _log.warning(
+                    "ai_model_failed name=%s domain=%s skill=%s err=%s",
+                    model_name,
+                    req.domain,
+                    req.skill,
+                    str(e)[:120],
+                )
+                app.state.guardrails_metrics["fallback_total"] += 1
+            except Exception:
+                pass
+            return _fallback_mc()
     else:
         try:
-            _log.warning(
-                "model_selection_failed domain=%s skill=%s err=%s",
-                req.domain,
-                req.skill,
-                str(last_err)[:120] if last_err else "unknown",
-            )
             app.state.guardrails_metrics["fallback_total"] += 1
         except Exception:
             pass
