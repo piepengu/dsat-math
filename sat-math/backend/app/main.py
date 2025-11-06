@@ -4,6 +4,7 @@ import os
 import random
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import Depends, FastAPI
@@ -67,7 +68,6 @@ from .schemas import (
     StreaksResponse,
 )
 
-from datetime import datetime, timedelta, timezone
 try:
     from zoneinfo import ZoneInfo
 except Exception:  # Python <3.9 fallback (not expected here)
@@ -281,6 +281,7 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             source="template",
             time_ms=req.time_ms if hasattr(req, "time_ms") else None,
             difficulty=(req.difficulty if hasattr(req, "difficulty") else None),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(db_attempt)
         db.commit()
@@ -369,6 +370,7 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         source="template",
         time_ms=req.time_ms if hasattr(req, "time_ms") else None,
         difficulty=(req.difficulty if hasattr(req, "difficulty") else None),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_attempt)
     db.commit()
@@ -560,6 +562,7 @@ def attempt_ai(req: AttemptAIRequest, db: Session = Depends(get_db)):
         source="ai",
         time_ms=(req.time_ms if (hasattr(req, "time_ms") and req.time_ms) else None),
         difficulty=(req.difficulty if hasattr(req, "difficulty") else None),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_attempt)
     db.commit()
