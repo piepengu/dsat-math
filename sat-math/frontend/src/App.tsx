@@ -84,6 +84,11 @@ type StreaksResponse = {
     badges_today: string[]
 }
 
+type AchievementsResponse = {
+    user_id: string
+    achievements: string[]
+}
+
 function App() {
     const [domain, setDomain] = useState<Domain>('Algebra')
     const [skill, setSkill] = useState<Skill>('linear_equation')
@@ -121,6 +126,10 @@ function App() {
     // Streaks UI state
     const [streaks, setStreaks] = useState<StreaksResponse | null>(null)
     const [streaksLoading, setStreaksLoading] = useState<boolean>(false)
+    
+    // Achievements UI state
+    const [achievements, setAchievements] = useState<AchievementsResponse | null>(null)
+    const [achievementsLoading, setAchievementsLoading] = useState<boolean>(false)
 
     // Default rich explanations for AI items (client-side only)
     const aiExplanationDefaults: Partial<Record<Skill, { concept?: string; plan?: string; quick_check?: string; common_mistake?: string }>> = {
@@ -1010,6 +1019,25 @@ function App() {
                         {streaksLoading ? 'Loading…' : 'My Streaks'}
                     </button>
                     <button
+                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-gray-800 hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                        disabled={achievementsLoading || !userId}
+                        onClick={async () => {
+                            if (!userId) return
+                            setAchievementsLoading(true)
+                            try {
+                                const resp = await axios.get<AchievementsResponse>(`${apiBase}/achievements`, { params: { user_id: userId } })
+                                setAchievements(resp.data)
+                            } catch (e: any) {
+                                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                setLastError(msg)
+                            } finally {
+                                setAchievementsLoading(false)
+                            }
+                        }}
+                    >
+                        {achievementsLoading ? 'Loading…' : 'My Achievements'}
+                    </button>
+                    <button
                         className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                         disabled={loading || !userId}
                         onClick={async () => {
@@ -1154,6 +1182,32 @@ function App() {
                                         ))}
                                     </div>
                                 </div>
+                            )}
+                        </div>
+                    )}
+                    {achievements && (
+                        <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
+                            <div className="font-semibold mb-1">My Achievements</div>
+                            {achievements.achievements && achievements.achievements.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {achievements.achievements.map((ach, i) => {
+                                        const displayName: Record<string, string> = {
+                                            first_solve: 'First Solve',
+                                            five_correct_streak: '5 Correct in a Row',
+                                            seven_day_streak: '7 Day Streak',
+                                        }
+                                        return (
+                                            <span
+                                                key={i}
+                                                className="px-3 py-1 rounded bg-purple-100 text-purple-800 text-sm font-semibold"
+                                            >
+                                                {displayName[ach] || ach}
+                                            </span>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-500 mt-2">No achievements yet. Keep practicing!</div>
                             )}
                         </div>
                     )}
