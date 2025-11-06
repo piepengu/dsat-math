@@ -397,6 +397,17 @@ Updates (2025-10-26)
   - Committed and pushed streaks feature implementation.
   - Committed and pushed Phase 1 AI speed optimizations.
   - All changes tested and verified working.
+  - **Phase 1 Deployed Live** (2025-11-05 23:04 UTC): Commit `23dd9bd` deployed to Render production.
+    - **Initial Performance Observations**:
+      - AI question generation took ~65.6 seconds on first test (slower than expected).
+      - Possible causes: cache warmup on first request, model availability, or API latency.
+      - Health endpoint shows 2 validated OK responses, indicating some AI calls are working.
+      - Need to monitor over next 24-48 hours to assess true performance improvements.
+    - **Next Steps**:
+      - Monitor AI response times after cache warmup (subsequent requests should be faster).
+      - Check Render logs for model selection patterns (`ai_model_use` logs).
+      - Verify `gemini-2.5-flash` availability and fallback behavior.
+      - Consider Phase 2 optimizations if performance doesn't improve as expected.
 
 - Next Steps
   - Monitor AI response times after Phase 1 deployment to verify speed improvements.
