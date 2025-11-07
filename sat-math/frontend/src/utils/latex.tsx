@@ -65,9 +65,23 @@ export const renderInlineMath = (text: string) => {
         const curr = processedParts[i]
         const next = processedParts[i + 1]
         if (curr.type === 'latex' && curr.var && next.type === 'text') {
-            const varPattern = new RegExp(`^\\s*${curr.var}\\s+`, 'i')
+            // Match variable followed by whitespace OR punctuation/end (e.g., " x " or " x?" or " x")
+            // Pattern: optional whitespace, variable, then either whitespace OR punctuation OR end
+            const varPattern = new RegExp(`^\\s*${curr.var}(\\s+|[?.,!;:]|$)`, 'i')
             if (varPattern.test(next.content)) {
-                next.content = next.content.replace(varPattern, ' ')
+                // Remove the variable and any trailing space, but keep punctuation
+                next.content = next.content.replace(varPattern, (match, p1) => {
+                    // If followed by punctuation, keep just the punctuation
+                    if (p1 && /^[?.,!;:]/.test(p1)) {
+                        return p1
+                    }
+                    // If followed by whitespace, keep just the space
+                    if (p1 && /^\s+/.test(p1)) {
+                        return ' '
+                    }
+                    // Otherwise remove the match entirely (end of string case)
+                    return ''
+                })
             }
         }
     }
