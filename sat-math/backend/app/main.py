@@ -4,6 +4,8 @@ import os
 import random
 import re
 import sys
+import time as _time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -155,7 +157,7 @@ if _HAS_GENAI:
                     model_name=model_name,
                     generation_config={
                         "response_mime_type": "application/json",
-                        "max_output_tokens": 2048,  # Limit output for speed
+                        "max_output_tokens": 1024,  # Reduced from 2048 for faster responses
                         "temperature": 0.7,  # Consistent but creative
                     },
                 )
@@ -165,6 +167,34 @@ if _HAS_GENAI:
 else:
     _get_cached_models = lambda: []
     _get_model_instance = lambda name, api_key: None
+
+
+# Pre-warm AI model cache on startup (Phase 2 optimization)
+@app.on_event("startup")
+async def startup_event():
+    """Pre-warm model cache on server startup for faster first request."""
+    if _HAS_GENAI:
+        try:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if api_key:
+                _log.info("Pre-warming AI model cache...")
+                # Pre-warm model discovery cache
+                _get_cached_models()
+                # Pre-warm primary model instance
+                preferred_order = [
+                    "gemini-2.5-flash",
+                    "gemini-2.5-flash-lite",
+                    "gemini-1.5-flash",
+                ]
+                for model_name in preferred_order[:1]:  # Just pre-warm the first one
+                    try:
+                        _get_model_instance(model_name, api_key)
+                        _log.info("Pre-warmed model: %s", model_name)
+                        break
+                    except Exception:
+                        continue
+        except Exception as e:
+            _log.warning("Failed to pre-warm model cache: %s", str(e)[:100])
 
 
 # Lightweight migration for new analytics columns on SQLite
@@ -737,14 +767,42 @@ def elaborate(req: ElaborateRequest):
                 model_instance = _get_model_instance(model_name, api_key)
                 if model_instance:
                     _log.info("elab_model_use name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-                    resp = model_instance.generate_content(prompt)
+                    # Add 30s timeout with fallback
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(model_instance.generate_content, prompt)
+                            resp = future.result(timeout=30.0)  # 30 second timeout
+                    except FutureTimeoutError:
+                        _log.warning(
+                            "elab_timeout name=%s domain=%s skill=%s",
+                            model_name,
+                            req.domain,
+                            req.skill,
+                        )
+                        return _fallback_stub()
                 else:
-                    # Fallback: try building fresh instance
+                    # Fallback: try building fresh instance with optimized config
                     model_instance = genai.GenerativeModel(
                         model_name=model_name,
-                        generation_config={"response_mime_type": "application/json"},
+                        generation_config={
+                            "response_mime_type": "application/json",
+                            "max_output_tokens": 1024,  # Reduced for faster responses
+                            "temperature": 0.7,
+                        },
                     )
-                    resp = model_instance.generate_content(prompt)
+                    # Add timeout for fallback instance too
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(model_instance.generate_content, prompt)
+                            resp = future.result(timeout=30.0)
+                    except FutureTimeoutError:
+                        _log.warning(
+                            "elab_timeout_fallback name=%s domain=%s skill=%s",
+                            model_name,
+                            req.domain,
+                            req.skill,
+                        )
+                        return _fallback_stub()
             except Exception as e:
                 _log.warning(
                     "elab_model_failed name=%s domain=%s skill=%s err=%s",
@@ -1097,17 +1155,58 @@ def generate_ai(req: GenerateAIRequest):
     model_name = candidate_names[0] if candidate_names else None
     if model_name:
         try:
+            start_time = _time.perf_counter()
             model_instance = _get_model_instance(model_name, api_key)
             if model_instance:
                 _log.info("ai_model_use name=%s domain=%s skill=%s", model_name, req.domain, req.skill)
-                resp = model_instance.generate_content(prompt)
+                # Add 30s timeout with fallback
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(model_instance.generate_content, prompt)
+                        resp = future.result(timeout=30.0)  # 30 second timeout
+                except FutureTimeoutError:
+                    _log.warning(
+                        "ai_timeout name=%s domain=%s skill=%s",
+                        model_name,
+                        req.domain,
+                        req.skill,
+                    )
+                    try:
+                        app.state.guardrails_metrics["fallback_total"] += 1
+                    except Exception:
+                        pass
+                    return _fallback_mc()
             else:
-                # Fallback: try building fresh instance
+                # Fallback: try building fresh instance with optimized config
                 model_instance = genai.GenerativeModel(
                     model_name=model_name,
-                    generation_config={"response_mime_type": "application/json"},
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "max_output_tokens": 1024,  # Reduced for faster responses
+                        "temperature": 0.7,
+                    },
                 )
-                resp = model_instance.generate_content(prompt)
+                # Add timeout for fallback instance too
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(model_instance.generate_content, prompt)
+                        resp = future.result(timeout=30.0)
+                except FutureTimeoutError:
+                    _log.warning(
+                        "ai_timeout_fallback name=%s domain=%s skill=%s",
+                        model_name,
+                        req.domain,
+                        req.skill,
+                    )
+                    try:
+                        app.state.guardrails_metrics["fallback_total"] += 1
+                    except Exception:
+                        pass
+                    return _fallback_mc()
+            
+            # Log timing
+            elapsed_ms = int((_time.perf_counter() - start_time) * 1000)
+            _log.info("ai_generate_time_ms name=%s domain=%s skill=%s time_ms=%d", model_name, req.domain, req.skill, elapsed_ms)
         except Exception as e:
             try:
                 _log.warning(
