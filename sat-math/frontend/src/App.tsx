@@ -1145,7 +1145,6 @@ function App() {
                         🗑️ Reset my stats
                     </button>
                     </div>
-                </div>
                     {stats && statsOpen && (
                         <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
                             <div className="flex items-center justify-between mb-2">
