@@ -75,7 +75,6 @@ export const renderInlineMath = (text: string) => {
         if (part.type === 'latex') {
             const seg = part.content
             const isDollar = seg.startsWith('$') && seg.endsWith('$')
-            const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
             let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
             // Fix common malformed fractions like \frac(8)(5) → {\frac{8}{5}}
             inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
