@@ -119,6 +119,7 @@ function App() {
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
     const [startTs, setStartTs] = useState<number | null>(null)
     const [nowTs, setNowTs] = useState<number>(Date.now())
+    const [aiGenStartTs, setAiGenStartTs] = useState<number | null>(null) // Track AI generation start time
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
     const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
     const [missed, setMissed] = useState<Array<{ domain: Domain; skill: Skill; difficulty: 'easy' | 'medium' | 'hard' }>>([])
@@ -413,11 +414,13 @@ function App() {
             }
 
             if (useAI) {
+                setAiGenStartTs(Date.now()) // Track when AI generation starts
                 const resp = await axios.post<GenerateAIResponse>(`${apiBase}/generate_ai`, {
                     domain,
                     skill,
                     difficulty,
                 })
+                setAiGenStartTs(null) // Clear when done
                 setLatex(resp.data.prompt_latex)
                 setSeed(-1) // AI items are not seeded
                 setChoices(resp.data.choices)
@@ -446,6 +449,7 @@ function App() {
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
             setLastError(msg)
+            setAiGenStartTs(null) // Clear on error
         } finally {
             setLoading(false)
         }
@@ -466,6 +470,13 @@ function App() {
         return () => clearInterval(id)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [startTs, result])
+
+    // Update estimated wait time display during AI generation
+    useEffect(() => {
+        if (!aiGenStartTs) return
+        const id = setInterval(() => setNowTs(Date.now()), 500)
+        return () => clearInterval(id)
+    }, [aiGenStartTs])
 
     const submit = async () => {
         if (seed == null) return
@@ -638,7 +649,18 @@ function App() {
                         {loading ? (
                             <>
                                 <span className="animate-spin mr-2">⏳</span>
-                                {useAI ? 'Generating...' : 'Loading...'}
+                                {useAI ? (
+                                    <>
+                                        Generating...
+                                        {aiGenStartTs && (
+                                            <span className="ml-2 text-xs opacity-75">
+                                                (~{Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000))}s / ~30s)
+                                            </span>
+                                        )}
+                                    </>
+                                ) : (
+                                    'Loading...'
+                                )}
                             </>
                         ) : (
                             '🔄 New question'

@@ -180,10 +180,10 @@ async def startup_event():
                 _log.info("Pre-warming AI model cache...")
                 # Pre-warm model discovery cache
                 _get_cached_models()
-                # Pre-warm primary model instance
+                # Pre-warm primary model instance (prioritize fastest)
                 preferred_order = [
+                    "gemini-2.5-flash-lite",  # Fastest model
                     "gemini-2.5-flash",
-                    "gemini-2.5-flash-lite",
                     "gemini-1.5-flash",
                 ]
                 for model_name in preferred_order[:1]:  # Just pre-warm the first one
@@ -735,10 +735,10 @@ def elaborate(req: ElaborateRequest):
         def _name_suffix(n: str) -> str:
             return n.split("/")[-1] if "/" in n else n
 
-        # Phase 1: Upgrade to gemini-2.5-flash (faster, recommended by Google)
+        # Phase 2: Prioritize gemini-2.5-flash-lite for fastest responses
         preferred_order = [
+            "gemini-2.5-flash-lite",  # Fastest model - prioritize for speed
             "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",  # Even faster fallback
             "gemini-1.5-flash",
             "gemini-1.5-flash-001",
             "gemini-1.5-flash-latest",
@@ -1121,15 +1121,13 @@ def generate_ai(req: GenerateAIRequest):
     except Exception:
         genai.configure(api_key=api_key)
 
+    # Optimized prompt: shorter, more direct, reduces token usage
     prompt = (
-        "You are an expert DSAT Math question writer. "
-        "Generate one medium-level multiple-choice question.\n"
-        f"Domain: {req.domain}. Skill: {req.skill}.\n"
-        "Return ONLY a compact JSON with keys: prompt_latex (KaTeX-ready), "
-        "choices (array of 4 strings), correct_index (0-3), explanation_steps "
-        "(array of 4-6 short steps).\n"
-        "Important: In JSON strings, escape EVERY backslash in LaTeX as \\"
-        "(e.g., \\frac, \\sqrt). No code fences or extra text."
+        f"DSAT Math: {req.domain} - {req.skill}. "
+        "Generate one medium multiple-choice question.\n"
+        "JSON only: {prompt_latex: string (KaTeX), choices: [4 strings], "
+        "correct_index: 0-3, explanation_steps: [4-6 short steps]}.\n"
+        "Escape backslashes in LaTeX (\\frac, \\sqrt). No code fences."
     )
 
     def _supports_generate(m) -> bool:
@@ -1139,10 +1137,10 @@ def generate_ai(req: GenerateAIRequest):
     def _name_suffix(n: str) -> str:
         return n.split("/")[-1] if "/" in n else n
 
-    # Phase 1: Upgrade to gemini-2.5-flash (faster, recommended by Google)
+    # Phase 2: Prioritize gemini-2.5-flash-lite for fastest responses
     preferred_order = [
+        "gemini-2.5-flash-lite",  # Fastest model - prioritize for speed
         "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",  # Even faster fallback
         "gemini-1.5-flash",
         "gemini-1.5-flash-001",
         "gemini-1.5-flash-latest",

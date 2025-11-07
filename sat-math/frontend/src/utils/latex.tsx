@@ -10,6 +10,10 @@ export const renderInlineMath = (text: string) => {
         t = t.replace(/\b(?:[A-Za-z]\s+){2,}[A-Za-z]\b/g, (m) => m.replace(/\s+/g, ''))
         // Collapse duplicate single-letter variables like "h h" -> "h"
         t = t.replace(/\b([A-Za-z])\s+\1\b/g, '$1')
+        // Remove duplicate single-letter variables at word boundaries: "x x?" -> "x?"
+        t = t.replace(/\b([A-Za-z])\s+([A-Za-z])\s+([?.,!;:])/g, (m, v1, v2, punct) => {
+            return v1 === v2 ? `${v1}${punct}` : m
+        })
         // Insert spaces between digits and letters when glued: 80plus -> 80 plus; rate40 -> rate 40
         t = t.replace(/(\d)([A-Za-z])/g, '$1 $2')
         t = t.replace(/([A-Za-z])(\d)/g, '$1 $2')
@@ -36,11 +40,42 @@ export const renderInlineMath = (text: string) => {
         return t
     }
     const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
-    return parts.map((seg, i) => {
+    // Post-process to remove duplicate variables that appear both in LaTeX and plain text
+    const processedParts: Array<{ type: 'latex' | 'text'; content: string; var?: string }> = []
+    for (let i = 0; i < parts.length; i++) {
+        const seg = parts[i]
         const isDollar = seg.startsWith('$') && seg.endsWith('$')
         const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
         const isBracket = seg.startsWith('\\[') && seg.endsWith('\\]')
         if (isDollar || isParen || isBracket) {
+            let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
+            // Extract single-letter variable if it's just a variable
+            const varMatch = inner.match(/^([a-zA-Z])$/)
+            processedParts.push({
+                type: 'latex',
+                content: seg,
+                var: varMatch ? varMatch[1].toLowerCase() : undefined
+            })
+        } else {
+            processedParts.push({ type: 'text', content: seg })
+        }
+    }
+    // Remove duplicate variables: if LaTeX has "x" and next text segment starts with " x", remove the " x"
+    for (let i = 0; i < processedParts.length - 1; i++) {
+        const curr = processedParts[i]
+        const next = processedParts[i + 1]
+        if (curr.type === 'latex' && curr.var && next.type === 'text') {
+            const varPattern = new RegExp(`^\\s*${curr.var}\\s+`, 'i')
+            if (varPattern.test(next.content)) {
+                next.content = next.content.replace(varPattern, ' ')
+            }
+        }
+    }
+    return processedParts.map((part, i) => {
+        if (part.type === 'latex') {
+            const seg = part.content
+            const isDollar = seg.startsWith('$') && seg.endsWith('$')
+            const isParen = seg.startsWith('\\(') && seg.endsWith('\\)')
             let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
             // Fix common malformed fractions like \frac(8)(5) → {\frac{8}{5}}
             inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
@@ -48,7 +83,7 @@ export const renderInlineMath = (text: string) => {
             inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
             return <InlineMath key={i} math={inner} />
         }
-        const cleaned = normalizePlainText(seg.replace(/\\\s/g, ' ').replace(/\\,/g, ' '))
+        const cleaned = normalizePlainText(part.content.replace(/\\\s/g, ' ').replace(/\\,/g, ' '))
         return <span key={i}>{cleaned}</span>
     })
 }
