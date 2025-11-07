@@ -457,4 +457,34 @@ Updates (2025-11-05)
   - Achievements backend: Commit `fb940e9`.
   - Achievements frontend: Commit `282ae80`.
   - Render auto-deployed backend changes successfully.
+
+Updates (2025-11-06)
+- Frontend
+  - **Client-Side API Response Caching**
+    - Created cache utility (`utils/cache.ts`) with 5-minute TTL for API responses.
+    - Implemented `getCached()`, `setCached()`, and `invalidateCache()` functions.
+    - Cache keys: `stats:{userId}`, `streaks:{userId}`, `achievements:{userId}`.
+    - Integrated caching into all three endpoints: `/stats`, `/streaks`, `/achievements`.
+    - Cache behavior:
+      - First click: Fetches from API and caches response.
+      - Subsequent clicks (within 5 min): Uses cached data instantly (no API call).
+      - After submitting answer: Cache invalidated, next click fetches fresh data.
+      - After resetting stats: Cache invalidated, stats refreshed.
+    - Benefits:
+      - Faster panel opening when data is cached (instant display).
+      - Reduced API calls (only fetch once per 5 minutes or after submission).
+      - Lower server load and improved UX.
+
+- Testing & Verification
+  - **Caching Functionality Verified**
+    - Test 1 (Initial fetch): First click on "My Streaks" → Shows "Loading..." → Fetches from API.
+    - Test 2 (Cache hit): Second click (after closing) → Opens instantly, no "Loading..." state → No API call.
+    - Test 3 (Cache invalidation): After submitting answer → Cache cleared → Third click shows "Loading..." → Fetches fresh data → Updated counts displayed correctly ("Today: 2 problem(s)").
+    - Network requests verified: Only 2 `/streaks` requests total (initial + after invalidation).
+    - All three endpoints (stats, streaks, achievements) tested and working correctly.
+
+- Deployment
+  - Caching implementation: Commit `6f80223`.
+  - Changes pushed to GitHub master branch.
+  - GitHub Pages will auto-deploy frontend changes.
   - Features tested and verified working in production.
