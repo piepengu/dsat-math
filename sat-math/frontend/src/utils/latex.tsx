@@ -70,7 +70,7 @@ export const renderInlineMath = (text: string) => {
             const varPattern = new RegExp(`^\\s*${curr.var}(\\s+|[?.,!;:]|$)`, 'i')
             if (varPattern.test(next.content)) {
                 // Remove the variable and any trailing space, but keep punctuation
-                next.content = next.content.replace(varPattern, (match, p1) => {
+                next.content = next.content.replace(varPattern, (_match, p1) => {
                     // If followed by punctuation, keep just the punctuation
                     if (p1 && /^[?.,!;:]/.test(p1)) {
                         return p1
