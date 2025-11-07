@@ -815,7 +815,20 @@ def elaborate(req: ElaborateRequest):
         else:
             return _fallback_stub()
 
-        text = (resp.text or "").strip()
+        # Handle empty responses (safety filters, quota limits, etc.)
+        try:
+            text = (resp.text or "").strip()
+        except (ValueError, AttributeError) as ve:
+            # finish_reason 2 = SAFETY or empty response
+            _log.warning(
+                "elab_empty_response domain=%s skill=%s finish_reason=%s err=%s",
+                req.domain,
+                req.skill,
+                getattr(resp.candidates[0] if resp.candidates else None, "finish_reason", "unknown"),
+                str(ve)[:120],
+            )
+            return _fallback_stub()
+        
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
@@ -1228,7 +1241,25 @@ def generate_ai(req: GenerateAIRequest):
         return _fallback_mc()
 
     try:
-        text = (resp.text or "").strip()
+        # Handle empty responses (safety filters, quota limits, etc.)
+        try:
+            text = (resp.text or "").strip()
+        except (ValueError, AttributeError) as ve:
+            # finish_reason 2 = SAFETY or empty response
+            _log.warning(
+                "ai_empty_response domain=%s skill=%s finish_reason=%s err=%s",
+                req.domain,
+                req.skill,
+                getattr(resp.candidates[0] if resp.candidates else None, "finish_reason", "unknown"),
+                str(ve)[:120],
+            )
+            try:
+                app.state.guardrails_metrics["validation_failed_total"] += 1
+                app.state.guardrails_metrics["fallback_total"] += 1
+            except Exception:
+                pass
+            return _fallback_mc()
+        
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
