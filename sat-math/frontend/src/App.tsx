@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BlockMath } from 'react-katex'
 import './App.css'
 import { renderInlineMath as renderInlineMathShared } from './utils/latex'
+import { getCached, setCached, invalidateCache, CACHE_KEYS } from './utils/cache'
 
 type Domain = 'Algebra' | 'PSD' | 'Advanced' | 'Geometry'
 type Skill =
@@ -515,6 +516,10 @@ function App() {
                             time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
                             difficulty,
                         })
+                        // Invalidate cache after submitting answer
+                        if (userId) {
+                            invalidateCache(userId)
+                        }
                     } catch {
                         // ignore logging errors
                     }
@@ -541,6 +546,10 @@ function App() {
                 if (inSession) setNumCorrect((c) => c + (resp.data.correct ? 1 : 0))
                 if (inSession && !resp.data.correct) {
                     setMissed((arr) => [...arr, { domain, skill, difficulty }])
+                }
+                // Invalidate cache after submitting answer
+                if (userId) {
+                    invalidateCache(userId)
                 }
             }
         } catch (e: any) {
@@ -1080,6 +1089,14 @@ function App() {
                             if (!userId) return
                             setStatsOpen(!statsOpen)
                             if (!statsOpen) {
+                                // Check cache first
+                                const cacheKey = CACHE_KEYS.stats(userId)
+                                const cached = getCached<Record<string, { attempts: number; correct: number; accuracy: number }>>(cacheKey)
+                                if (cached) {
+                                    setStats(cached)
+                                    return
+                                }
+                                
                                 setLoading(true)
                                 try {
                                     const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
@@ -1087,6 +1104,7 @@ function App() {
                                         { params: { user_id: userId } }
                                     )
                                     setStats(resp.data)
+                                    setCached(cacheKey, resp.data)
                                 } catch (e: any) {
                                     const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
                                     setLastError(msg)
@@ -1105,10 +1123,19 @@ function App() {
                             if (!userId) return
                             setStreaksOpen(!streaksOpen)
                             if (!streaksOpen) {
+                                // Check cache first
+                                const cacheKey = CACHE_KEYS.streaks(userId)
+                                const cached = getCached<StreaksResponse>(cacheKey)
+                                if (cached) {
+                                    setStreaks(cached)
+                                    return
+                                }
+                                
                                 setStreaksLoading(true)
                                 try {
                                     const resp = await axios.get<StreaksResponse>(`${apiBase}/streaks`, { params: { user_id: userId } })
                                     setStreaks(resp.data)
+                                    setCached(cacheKey, resp.data)
                                 } catch (e: any) {
                                     const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
                                     setLastError(msg)
@@ -1127,10 +1154,19 @@ function App() {
                             if (!userId) return
                             setAchievementsOpen(!achievementsOpen)
                             if (!achievementsOpen) {
+                                // Check cache first
+                                const cacheKey = CACHE_KEYS.achievements(userId)
+                                const cached = getCached<AchievementsResponse>(cacheKey)
+                                if (cached) {
+                                    setAchievements(cached)
+                                    return
+                                }
+                                
                                 setAchievementsLoading(true)
                                 try {
                                     const resp = await axios.get<AchievementsResponse>(`${apiBase}/achievements`, { params: { user_id: userId } })
                                     setAchievements(resp.data)
+                                    setCached(cacheKey, resp.data)
                                 } catch (e: any) {
                                     const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
                                     setLastError(msg)
@@ -1150,12 +1186,15 @@ function App() {
                             setLoading(true)
                             try {
                                 await axios.post(`${apiBase}/reset_stats`, { user_id: userId })
+                                // Invalidate cache after reset
+                                invalidateCache(userId)
                                 // Refresh stats after reset
                                 const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
                                     `${apiBase}/stats`,
                                     { params: { user_id: userId } }
                                 )
                                 setStats(resp.data)
+                                setCached(CACHE_KEYS.stats(userId), resp.data)
                             } catch (e: any) {
                                 const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
                                 setLastError(msg)
