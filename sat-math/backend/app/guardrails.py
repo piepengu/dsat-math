@@ -35,6 +35,20 @@ def _validate_math_formats(skill: str, choices: List[str]) -> bool:
     try:
         import sympy as _sp
 
+        def _strip_latex(s: str) -> str:
+            """Strip LaTeX delimiters ($...$, \(...\), \[...\]) for sympy parsing."""
+            t = str(s).strip()
+            # Remove $...$ delimiters
+            if t.startswith("$") and t.endswith("$") and len(t) > 2:
+                t = t[1:-1]
+            # Remove \(...\) delimiters
+            if t.startswith("\\(") and t.endswith("\\)"):
+                t = t[2:-2]
+            # Remove \[...\] delimiters
+            if t.startswith("\\[") and t.endswith("\\]"):
+                t = t[2:-2]
+            return t.strip()
+
         if skill in (
             "linear_equation",
             "linear_equation_mc",
@@ -49,12 +63,14 @@ def _validate_math_formats(skill: str, choices: List[str]) -> bool:
             "triangle_angle",
             "unit_rate",
         ):
-            return all(_sp.sympify(c, evaluate=False) is not None for c in choices)
+            # Strip LaTeX delimiters before sympy parsing
+            stripped = [_strip_latex(c) for c in choices]
+            return all(_sp.sympify(c, evaluate=False) is not None for c in stripped)
 
         if skill in ("linear_system_2x2", "quadratic_roots"):
 
             def _is_pair(s: str) -> bool:
-                t = s.strip()
+                t = _strip_latex(s).strip()
                 return t.startswith("(") and t.endswith(")") and "," in t
 
             return all(_is_pair(c) for c in choices)
@@ -62,7 +78,7 @@ def _validate_math_formats(skill: str, choices: List[str]) -> bool:
         if skill in ("linear_system_3x3",):
 
             def _is_triple(s: str) -> bool:
-                t = s.strip()
+                t = _strip_latex(s).strip()
                 return t.startswith("(") and t.endswith(")") and t.count(",") == 2
 
             return all(_is_triple(c) for c in choices)
