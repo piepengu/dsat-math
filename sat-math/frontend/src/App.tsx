@@ -3,8 +3,8 @@ import 'katex/dist/katex.min.css'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BlockMath } from 'react-katex'
 import './App.css'
+import { CACHE_KEYS, getCached, invalidateCache, setCached } from './utils/cache'
 import { renderInlineMath as renderInlineMathShared } from './utils/latex'
-import { getCached, setCached, invalidateCache, CACHE_KEYS } from './utils/cache'
 
 type Domain = 'Algebra' | 'PSD' | 'Advanced' | 'Geometry'
 type Skill =
@@ -106,6 +106,7 @@ function App() {
     const [questionIdx, setQuestionIdx] = useState(0)
     const [numCorrect, setNumCorrect] = useState(0)
     const [estimate, setEstimate] = useState<{ score: number; ci68: [number, number] } | null>(null)
+    const [sessionSummary, setSessionSummary] = useState<{ correct: number; total: number } | null>(null)
     const [userId, setUserId] = useState<string>('')
     const [stats, setStats] = useState<Record<string, { attempts: number; correct: number; accuracy: number }> | null>(null)
     const [lastError, setLastError] = useState<string | null>(null)
@@ -128,19 +129,19 @@ function App() {
     // Streaks UI state
     const [streaks, setStreaks] = useState<StreaksResponse | null>(null)
     const [streaksLoading, setStreaksLoading] = useState<boolean>(false)
-    
+
     // Achievements UI state
     const [achievements, setAchievements] = useState<AchievementsResponse | null>(null)
     const [achievementsLoading, setAchievementsLoading] = useState<boolean>(false)
-    
+
     // Panel visibility state (collapsible panels)
     const [statsOpen, setStatsOpen] = useState<boolean>(false)
     const [streaksOpen, setStreaksOpen] = useState<boolean>(false)
     const [achievementsOpen, setAchievementsOpen] = useState<boolean>(false)
-    
+
     // Input ref for auto-focus
     const answerInputRef = useRef<HTMLInputElement>(null)
-    
+
     // Friendly skill names mapping
     const skillDisplayNames: Record<Skill, string> = {
         linear_equation: 'Linear Equation',
@@ -159,7 +160,7 @@ function App() {
         rational_equation: 'Rational Equation',
         unit_rate: 'Unit Rate',
     }
-    
+
     // Helper function to format error messages
     const formatError = (error: string | null): string | null => {
         if (!error) return null
@@ -587,96 +588,101 @@ function App() {
                         Formula sheet
                     </a>
                 </div>
+                <div className="mb-4">
+                    <p className="text-gray-700 text-base mb-1">Free AI-powered Digital SAT Math practice with instant step-by-step explanations.</p>
+                    <p className="text-gray-500 text-sm">No login • 100% free</p>
+                </div>
                 <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 shadow-sm">
                     <div className="flex flex-wrap gap-2 items-center mb-3">
-                    <select
-                        className="border rounded px-3 py-2 bg-white"
-                        value={domain}
-                        onChange={(e) => {
-                            const d = e.target.value as Domain
-                            setDomain(d)
-                            const first = (skillOptions[d][0]?.value || 'linear_equation') as Skill
-                            setSkill(first)
-                        }}
-                    >
-                        <option value="Algebra">Algebra</option>
-                        <option value="PSD">Problem Solving & Data Analysis</option>
-                        <option value="Advanced">Advanced Math</option>
-                        <option value="Geometry">Geometry & Trig</option>
-                    </select>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                        <input
-                            type="checkbox"
-                            className="accent-indigo-600"
-                            checked={useAI}
-                            onChange={(e) => setUseAI(e.target.checked)}
-                        />
-                        Use AI
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                        <input
-                            type="checkbox"
-                            className="accent-emerald-600"
-                            checked={adaptive}
-                            onChange={(e) => setAdaptive(e.target.checked)}
-                        />
-                        Adaptive mode
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                        Difficulty:
                         <select
-                            className="border rounded px-2 py-1 bg-white disabled:opacity-60"
-                            value={difficulty}
-                            onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
-                            disabled={adaptive}
+                            className="border rounded px-3 py-2 bg-white"
+                            value={domain}
+                            onChange={(e) => {
+                                const d = e.target.value as Domain
+                                setDomain(d)
+                                const first = (skillOptions[d][0]?.value || 'linear_equation') as Skill
+                                setSkill(first)
+                            }}
                         >
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
+                            <option value="Algebra">Algebra</option>
+                            <option value="PSD">Problem Solving & Data Analysis</option>
+                            <option value="Advanced">Advanced Math</option>
+                            <option value="Geometry">Geometry & Trig</option>
                         </select>
-                    </label>
-                    <select
-                        className="border rounded px-3 py-2 bg-white"
-                        value={skill}
-                        onChange={(e) => setSkill(e.target.value as Skill)}
-                    >
-                        {allowedSkills.map((s) => (
-                            <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                    </select>
-                    <button
-                        className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                        disabled={loading || inSession}
-                        onClick={() => {
-                            setEstimate(null)
-                            setQuestionIdx(0)
-                            setNumCorrect(0)
-                            setInSession(false)
-                            void loadQuestion()
-                        }}
-                    >
-                        {loading ? (
-                            <>
-                                <span className="animate-spin mr-2">⏳</span>
-                                {useAI ? (
-                                    <>
-                                        Generating...
-                                        {aiGenStartTs && (
-                                            <span className="ml-2 text-xs opacity-75">
-                                                (~{Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000))}s / ~30s)
-                                            </span>
-                                        )}
-                                    </>
-                                ) : (
-                                    'Loading...'
-                                )}
-                            </>
-                        ) : (
-                            '🔄 New question'
-                        )}
-                    </button>
-                    <div className="ml-auto text-xs text-gray-500">User: {userId || '...'}</div>
-                </div>
+                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                            <input
+                                type="checkbox"
+                                className="accent-indigo-600"
+                                checked={useAI}
+                                onChange={(e) => setUseAI(e.target.checked)}
+                            />
+                            Use AI
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                            <input
+                                type="checkbox"
+                                className="accent-emerald-600"
+                                checked={adaptive}
+                                onChange={(e) => setAdaptive(e.target.checked)}
+                            />
+                            Adaptive mode
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
+                            Difficulty:
+                            <select
+                                className="border rounded px-2 py-1 bg-white disabled:opacity-60"
+                                value={difficulty}
+                                onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+                                disabled={adaptive}
+                            >
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </label>
+                        <select
+                            className="border rounded px-3 py-2 bg-white"
+                            value={skill}
+                            onChange={(e) => setSkill(e.target.value as Skill)}
+                        >
+                            {allowedSkills.map((s) => (
+                                <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                        </select>
+                        <button
+                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            disabled={loading || inSession}
+                            onClick={() => {
+                                setEstimate(null)
+                                setSessionSummary(null)
+                                setQuestionIdx(0)
+                                setNumCorrect(0)
+                                setInSession(false)
+                                void loadQuestion()
+                            }}
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    {useAI ? (
+                                        <>
+                                            Generating...
+                                            {aiGenStartTs && (
+                                                <span className="ml-2 text-xs opacity-75">
+                                                    (~{Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000))}s / ~30s)
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        'Loading...'
+                                    )}
+                                </>
+                            ) : (
+                                'Next question'
+                            )}
+                        </button>
+                        <div className="ml-auto text-xs text-gray-500">User: {userId || '...'}</div>
+                    </div>
                 </div>
 
                 <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 shadow-sm">
@@ -698,6 +704,7 @@ function App() {
                             disabled={loading || inSession}
                             onClick={async () => {
                                 setEstimate(null)
+                                setSessionSummary(null)
                                 setQuestionIdx(0)
                                 setNumCorrect(0)
                                 setInSession(true)
@@ -725,71 +732,76 @@ function App() {
                 )}
 
                 {latex && (
-                    <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
-                        {useAI
-                            ? (() => {
-                                const norm = normalizeLatex(latex)
-                                const plain = maybeRenderPlainText(norm)
-                                if (plain) return plain
-                                // Handle block math delimiters \[ ... \]
-                                if (/\\\[[\s\S]*?\\\]/.test(norm)) {
-                                    const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
-                                    return parts.map((seg, i) =>
-                                        seg.startsWith('\\[') && seg.endsWith('\\]') ? (
-                                            <div key={i} className="my-2">
-                                                <BlockMath math={seg.slice(2, -2)} />
-                                            </div>
-                                        ) : (
-                                            <span key={i}>{renderInlineMath(seg)}</span>
+                    <>
+                        <div className="text-sm text-gray-500 mb-2">
+                            Skill: {skillOptions[domain].find(s => s.value === skill)?.label || skill} • Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
+                            {useAI
+                                ? (() => {
+                                    const norm = normalizeLatex(latex)
+                                    const plain = maybeRenderPlainText(norm)
+                                    if (plain) return plain
+                                    // Handle block math delimiters \[ ... \]
+                                    if (/\\\[[\s\S]*?\\\]/.test(norm)) {
+                                        const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
+                                        return parts.map((seg, i) =>
+                                            seg.startsWith('\\[') && seg.endsWith('\\]') ? (
+                                                <div key={i} className="my-2">
+                                                    <BlockMath math={seg.slice(2, -2)} />
+                                                </div>
+                                            ) : (
+                                                <span key={i}>{renderInlineMath(seg)}</span>
+                                            )
                                         )
-                                    )
-                                }
-                                if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
-                                if (norm.includes('$$')) {
-                                    return norm.split('$$').map((seg, i) =>
-                                        i % 2 === 1 ? (
-                                            <div key={i} className="my-2">
-                                                <BlockMath math={seg} />
-                                            </div>
-                                        ) : (
-                                            <span key={i}>{renderInlineMath(seg)}</span>
+                                    }
+                                    if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
+                                    if (norm.includes('$$')) {
+                                        return norm.split('$$').map((seg, i) =>
+                                            i % 2 === 1 ? (
+                                                <div key={i} className="my-2">
+                                                    <BlockMath math={seg} />
+                                                </div>
+                                            ) : (
+                                                <span key={i}>{renderInlineMath(seg)}</span>
+                                            )
                                         )
-                                    )
-                                }
-                                return renderWithEnvironments(norm)
-                            })()
-                            : (() => {
-                                const norm = normalizeLatex(latex)
-                                const plain = maybeRenderPlainText(norm)
-                                if (plain) return plain
-                                // Handle block math delimiters \[ ... \]
-                                if (/\\\[[\s\S]*?\\\]/.test(norm)) {
-                                    const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
-                                    return parts.map((seg, i) =>
-                                        seg.startsWith('\\[') && seg.endsWith('\\]') ? (
-                                            <div key={i} className="my-2">
-                                                <BlockMath math={seg.slice(2, -2)} />
-                                            </div>
-                                        ) : (
-                                            <span key={i}>{renderInlineMath(seg)}</span>
+                                    }
+                                    return renderWithEnvironments(norm)
+                                })()
+                                : (() => {
+                                    const norm = normalizeLatex(latex)
+                                    const plain = maybeRenderPlainText(norm)
+                                    if (plain) return plain
+                                    // Handle block math delimiters \[ ... \]
+                                    if (/\\\[[\s\S]*?\\\]/.test(norm)) {
+                                        const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
+                                        return parts.map((seg, i) =>
+                                            seg.startsWith('\\[') && seg.endsWith('\\]') ? (
+                                                <div key={i} className="my-2">
+                                                    <BlockMath math={seg.slice(2, -2)} />
+                                                </div>
+                                            ) : (
+                                                <span key={i}>{renderInlineMath(seg)}</span>
+                                            )
                                         )
-                                    )
-                                }
-                                if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
-                                if (norm.includes('$$')) {
-                                    return norm.split('$$').map((seg, i) =>
-                                        i % 2 === 1 ? (
-                                            <div key={i} className="my-2">
-                                                <BlockMath math={seg} />
-                                            </div>
-                                        ) : (
-                                            <span key={i}>{renderInlineMath(seg)}</span>
+                                    }
+                                    if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
+                                    if (norm.includes('$$')) {
+                                        return norm.split('$$').map((seg, i) =>
+                                            i % 2 === 1 ? (
+                                                <div key={i} className="my-2">
+                                                    <BlockMath math={seg} />
+                                                </div>
+                                            ) : (
+                                                <span key={i}>{renderInlineMath(seg)}</span>
+                                            )
                                         )
-                                    )
-                                }
-                                return renderWithEnvironments(norm)
-                            })()}
-                    </div>
+                                    }
+                                    return renderWithEnvironments(norm)
+                                })()}
+                        </div>
+                    </>
                 )}
 
                 {/* live timer */}
@@ -919,6 +931,7 @@ function App() {
                                             { correct: numCorrect, total: sessionLen }
                                         )
                                         setEstimate({ score: est.data.score, ci68: est.data.ci68 })
+                                        setSessionSummary({ correct: numCorrect, total: sessionLen })
                                     } finally {
                                         setLoading(false)
                                     }
@@ -1067,6 +1080,14 @@ function App() {
                     </div>
                 )}
 
+                {sessionSummary && (
+                    <div className="mt-4 p-3 border border-emerald-200 rounded-md bg-emerald-50">
+                        <div className="text-base font-semibold text-emerald-800">
+                            Session complete: {sessionSummary.correct}/{sessionSummary.total} correct • Accuracy {Math.round((sessionSummary.correct / sessionSummary.total) * 100)}%
+                        </div>
+                    </div>
+                )}
+
                 {estimate && (
                     <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
                         <div className="font-bold">Estimated SAT Math score</div>
@@ -1082,129 +1103,129 @@ function App() {
 
                 <div className="mt-4 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
                     <div className="flex flex-wrap gap-2 items-center">
-                    <button
-                        className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                        disabled={loading || !userId}
-                        onClick={async () => {
-                            if (!userId) return
-                            setStatsOpen(!statsOpen)
-                            if (!statsOpen) {
-                                // Check cache first
-                                const cacheKey = CACHE_KEYS.stats(userId)
-                                const cached = getCached<Record<string, { attempts: number; correct: number; accuracy: number }>>(cacheKey)
-                                if (cached) {
-                                    setStats(cached)
-                                    return
+                        <button
+                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            disabled={loading || !userId}
+                            onClick={async () => {
+                                if (!userId) return
+                                setStatsOpen(!statsOpen)
+                                if (!statsOpen) {
+                                    // Check cache first
+                                    const cacheKey = CACHE_KEYS.stats(userId)
+                                    const cached = getCached<Record<string, { attempts: number; correct: number; accuracy: number }>>(cacheKey)
+                                    if (cached) {
+                                        setStats(cached)
+                                        return
+                                    }
+
+                                    setLoading(true)
+                                    try {
+                                        const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
+                                            `${apiBase}/stats`,
+                                            { params: { user_id: userId } }
+                                        )
+                                        setStats(resp.data)
+                                        setCached(cacheKey, resp.data)
+                                    } catch (e: any) {
+                                        const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                        setLastError(msg)
+                                    } finally {
+                                        setLoading(false)
+                                    }
                                 }
-                                
+                            }}
+                        >
+                            📊 My Stats
+                        </button>
+                        <button
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-gray-800 hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            disabled={streaksLoading || !userId}
+                            onClick={async () => {
+                                if (!userId) return
+                                setStreaksOpen(!streaksOpen)
+                                if (!streaksOpen) {
+                                    // Check cache first
+                                    const cacheKey = CACHE_KEYS.streaks(userId)
+                                    const cached = getCached<StreaksResponse>(cacheKey)
+                                    if (cached) {
+                                        setStreaks(cached)
+                                        return
+                                    }
+
+                                    setStreaksLoading(true)
+                                    try {
+                                        const resp = await axios.get<StreaksResponse>(`${apiBase}/streaks`, { params: { user_id: userId } })
+                                        setStreaks(resp.data)
+                                        setCached(cacheKey, resp.data)
+                                    } catch (e: any) {
+                                        const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                        setLastError(msg)
+                                    } finally {
+                                        setStreaksLoading(false)
+                                    }
+                                }
+                            }}
+                        >
+                            {streaksLoading ? 'Loading…' : '🔥 My Streaks'}
+                        </button>
+                        <button
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-gray-800 hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                            disabled={achievementsLoading || !userId}
+                            onClick={async () => {
+                                if (!userId) return
+                                setAchievementsOpen(!achievementsOpen)
+                                if (!achievementsOpen) {
+                                    // Check cache first
+                                    const cacheKey = CACHE_KEYS.achievements(userId)
+                                    const cached = getCached<AchievementsResponse>(cacheKey)
+                                    if (cached) {
+                                        setAchievements(cached)
+                                        return
+                                    }
+
+                                    setAchievementsLoading(true)
+                                    try {
+                                        const resp = await axios.get<AchievementsResponse>(`${apiBase}/achievements`, { params: { user_id: userId } })
+                                        setAchievements(resp.data)
+                                        setCached(cacheKey, resp.data)
+                                    } catch (e: any) {
+                                        const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
+                                        setLastError(msg)
+                                    } finally {
+                                        setAchievementsLoading(false)
+                                    }
+                                }
+                            }}
+                        >
+                            {achievementsLoading ? 'Loading…' : '🏆 My Achievements'}
+                        </button>
+                        <button
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                            disabled={loading || !userId}
+                            onClick={async () => {
+                                if (!userId) return
                                 setLoading(true)
                                 try {
+                                    await axios.post(`${apiBase}/reset_stats`, { user_id: userId })
+                                    // Invalidate cache after reset
+                                    invalidateCache(userId)
+                                    // Refresh stats after reset
                                     const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
                                         `${apiBase}/stats`,
                                         { params: { user_id: userId } }
                                     )
                                     setStats(resp.data)
-                                    setCached(cacheKey, resp.data)
+                                    setCached(CACHE_KEYS.stats(userId), resp.data)
                                 } catch (e: any) {
                                     const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
                                     setLastError(msg)
                                 } finally {
                                     setLoading(false)
                                 }
-                            }
-                        }}
-                    >
-                        📊 My Stats
-                    </button>
-                    <button
-                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-gray-800 hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                        disabled={streaksLoading || !userId}
-                        onClick={async () => {
-                            if (!userId) return
-                            setStreaksOpen(!streaksOpen)
-                            if (!streaksOpen) {
-                                // Check cache first
-                                const cacheKey = CACHE_KEYS.streaks(userId)
-                                const cached = getCached<StreaksResponse>(cacheKey)
-                                if (cached) {
-                                    setStreaks(cached)
-                                    return
-                                }
-                                
-                                setStreaksLoading(true)
-                                try {
-                                    const resp = await axios.get<StreaksResponse>(`${apiBase}/streaks`, { params: { user_id: userId } })
-                                    setStreaks(resp.data)
-                                    setCached(cacheKey, resp.data)
-                                } catch (e: any) {
-                                    const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
-                                    setLastError(msg)
-                                } finally {
-                                    setStreaksLoading(false)
-                                }
-                            }
-                        }}
-                    >
-                        {streaksLoading ? 'Loading…' : '🔥 My Streaks'}
-                    </button>
-                    <button
-                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-gray-800 hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                        disabled={achievementsLoading || !userId}
-                        onClick={async () => {
-                            if (!userId) return
-                            setAchievementsOpen(!achievementsOpen)
-                            if (!achievementsOpen) {
-                                // Check cache first
-                                const cacheKey = CACHE_KEYS.achievements(userId)
-                                const cached = getCached<AchievementsResponse>(cacheKey)
-                                if (cached) {
-                                    setAchievements(cached)
-                                    return
-                                }
-                                
-                                setAchievementsLoading(true)
-                                try {
-                                    const resp = await axios.get<AchievementsResponse>(`${apiBase}/achievements`, { params: { user_id: userId } })
-                                    setAchievements(resp.data)
-                                    setCached(cacheKey, resp.data)
-                                } catch (e: any) {
-                                    const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
-                                    setLastError(msg)
-                                } finally {
-                                    setAchievementsLoading(false)
-                                }
-                            }
-                        }}
-                    >
-                        {achievementsLoading ? 'Loading…' : '🏆 My Achievements'}
-                    </button>
-                    <button
-                        className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                        disabled={loading || !userId}
-                        onClick={async () => {
-                            if (!userId) return
-                            setLoading(true)
-                            try {
-                                await axios.post(`${apiBase}/reset_stats`, { user_id: userId })
-                                // Invalidate cache after reset
-                                invalidateCache(userId)
-                                // Refresh stats after reset
-                                const resp = await axios.get<Record<string, { attempts: number; correct: number; accuracy: number }>>(
-                                    `${apiBase}/stats`,
-                                    { params: { user_id: userId } }
-                                )
-                                setStats(resp.data)
-                                setCached(CACHE_KEYS.stats(userId), resp.data)
-                            } catch (e: any) {
-                                const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
-                                setLastError(msg)
-                            } finally {
-                                setLoading(false)
-                            }
-                        }}
-                    >
-                        🗑️ Reset my stats
-                    </button>
+                            }}
+                        >
+                            🗑️ Reset my stats
+                        </button>
                     </div>
                     {stats && statsOpen && (
                         <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
