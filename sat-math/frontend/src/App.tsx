@@ -1025,12 +1025,12 @@ function App() {
                                     correctAnswer={result.correct_answer}
                                 />
                                 {result.explanation && (
-                                    <div className="mb-2 text-sm text-gray-800 space-y-1">
+                                    <div className="mb-2 text-sm space-y-1">
                                         {result.explanation.concept && (
-                                            <div><span className="font-semibold">Concept:</span> {renderInlineMath(result.explanation.concept)}</div>
+                                            <div className="bg-purple-100 text-purple-900 px-2 py-1 rounded"><span className="font-semibold">Concept:</span> {renderInlineMath(result.explanation.concept)}</div>
                                         )}
                                         {result.explanation.plan && (
-                                            <div><span className="font-semibold">Plan:</span> {renderInlineMath(result.explanation.plan)}</div>
+                                            <div className="bg-green-100 text-green-900 px-2 py-1 rounded"><span className="font-semibold">Plan:</span> {renderInlineMath(result.explanation.plan)}</div>
                                         )}
                                     </div>
                                 )}
@@ -1040,12 +1040,12 @@ function App() {
                                     ))}
                                 </ol>
                                 {result.explanation && (
-                                    <div className="mt-2 text-sm text-gray-800 space-y-1">
+                                    <div className="mt-2 text-sm space-y-1">
                                         {result.explanation.quick_check && (
-                                            <div><span className="font-semibold">Quick check:</span> {renderInlineMath(result.explanation.quick_check)}</div>
+                                            <div className="bg-amber-100 text-amber-900 px-2 py-1 rounded"><span className="font-semibold">Quick check:</span> {renderInlineMath(result.explanation.quick_check)}</div>
                                         )}
                                         {result.explanation.common_mistake && (
-                                            <div><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
+                                            <div className="bg-pink-100 text-red-900 px-2 py-1 rounded"><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
                                         )}
                                     </div>
                                 )}
@@ -1574,12 +1574,12 @@ function ElaborateTutor(props: {
                         {err && <span className="text-xs text-rose-700">{err}</span>}
                     </div>
                     {resp && (
-                        <div className="mt-3 text-sm text-gray-800 space-y-1">
+                        <div className="mt-3 text-sm space-y-1">
                             {resp.concept && (
-                                <div><span className="font-semibold">Concept:</span> {renderInline(resp.concept)}</div>
+                                <div className="bg-purple-100 text-purple-900 px-2 py-1 rounded"><span className="font-semibold">Concept:</span> {renderInline(resp.concept)}</div>
                             )}
                             {resp.plan && (
-                                <div><span className="font-semibold">Plan:</span> {renderInline(resp.plan)}</div>
+                                <div className="bg-green-100 text-green-900 px-2 py-1 rounded"><span className="font-semibold">Plan:</span> {renderInline(resp.plan)}</div>
                             )}
                             {Array.isArray(resp.walkthrough) && resp.walkthrough.length > 0 && (
                                 <ol className="list-decimal list-inside space-y-1">
@@ -1589,10 +1589,10 @@ function ElaborateTutor(props: {
                                 </ol>
                             )}
                             {resp.quick_check && (
-                                <div><span className="font-semibold">Quick check:</span> {renderInline(resp.quick_check)}</div>
+                                <div className="bg-amber-100 text-amber-900 px-2 py-1 rounded"><span className="font-semibold">Quick check:</span> {renderInline(resp.quick_check)}</div>
                             )}
                             {resp.common_mistake && (
-                                <div><span className="font-semibold">Common mistake:</span> {renderInline(resp.common_mistake)}</div>
+                                <div className="bg-pink-100 text-red-900 px-2 py-1 rounded"><span className="font-semibold">Common mistake:</span> {renderInline(resp.common_mistake)}</div>
                             )}
                         </div>
                     )}
