@@ -125,6 +125,7 @@ function App() {
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
     const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
     const [missed, setMissed] = useState<Array<{ domain: Domain; skill: Skill; difficulty: 'easy' | 'medium' | 'hard' }>>([])
+    const [showAbout, setShowAbout] = useState<boolean>(false)
 
     // Streaks UI state
     const [streaks, setStreaks] = useState<StreaksResponse | null>(null)
@@ -578,15 +579,25 @@ function App() {
                 )}
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-2xl font-semibold text-blue-600">DSAT Math Forge</h2>
-                    <a
-                        className="text-sm text-indigo-700 hover:underline"
-                        href="formulas.html"
-                        target="_blank"
-                        rel="noopener"
-                        aria-label="Open formula sheet"
-                    >
-                        Formula sheet
-                    </a>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowAbout(true)}
+                            className="text-gray-500 hover:text-gray-700 text-lg font-bold w-6 h-6 rounded-full border border-gray-300 hover:border-gray-400 flex items-center justify-center transition-colors"
+                            aria-label="About DSAT Math Forge"
+                            title="About"
+                        >
+                            ⓘ
+                        </button>
+                        <a
+                            className="text-sm text-indigo-700 hover:underline"
+                            href="formulas.html"
+                            target="_blank"
+                            rel="noopener"
+                            aria-label="Open formula sheet"
+                        >
+                            Formula sheet
+                        </a>
+                    </div>
                 </div>
                 <div className="mb-4">
                     <p className="text-gray-700 text-base mb-1">Free AI-powered Digital SAT Math practice with instant step-by-step explanations.</p>
@@ -1408,6 +1419,68 @@ function App() {
                         </div>
                     )}
                 </div>
+
+                {/* About Modal */}
+                {showAbout && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAbout(false)}>
+                        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-2xl font-bold text-blue-600">How DSAT Math Forge Works</h3>
+                                    <button
+                                        onClick={() => setShowAbout(false)}
+                                        className="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none"
+                                        aria-label="Close"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4 text-gray-700">
+                                    <div>
+                                        <h4 className="font-semibold text-lg mb-2">AI-Powered Explanations</h4>
+                                        <p className="text-sm">
+                                            DSAT Math Forge uses <strong>Google Gemini models</strong> (primarily Gemini 2.5 Flash) to generate step-by-step SAT math explanations.
+                                            Custom prompts enforce a structured approach: <strong>Concept → Plan → Steps → Verification</strong>.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-lg mb-2">Adaptive Practice</h4>
+                                        <p className="text-sm">
+                                            <strong>Adaptive Mode</strong> adjusts difficulty using three signals:
+                                            correct answer streaks, response time, and skill-specific performance.
+                                            The system tracks your accuracy per skill (Algebra, Geometry, etc.) and adapts accordingly.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-lg mb-2">Privacy & Data</h4>
+                                        <p className="text-sm">
+                                            <strong>No login required</strong> — practice immediately.
+                                            Your progress is stored locally in your browser.
+                                            No personal data is collected or stored on our servers.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-amber-50 border border-amber-200 rounded p-3">
+                                        <p className="text-sm text-amber-900">
+                                            <strong>⚠️ Important:</strong> AI can make mistakes. Always think critically and verify solutions.
+                                            This tool is designed to support learning, not replace it.
+                                        </p>
+                                    </div>
+
+                                    <div className="pt-2 border-t border-gray-200">
+                                        <p className="text-xs text-gray-500">
+                                            Built with FastAPI (backend) and React + TypeScript (frontend).
+                                            Questions generated using both AI and template-based methods.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

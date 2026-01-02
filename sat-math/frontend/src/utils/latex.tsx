@@ -15,8 +15,34 @@ export const renderInlineMath = (text: string) => {
             return v1 === v2 ? `${v1}${punct}` : m
         })
         // Insert spaces between digits and letters when glued: 80plus -> 80 plus; rate40 -> rate 40
-        t = t.replace(/(\d)([A-Za-z])/g, '$1 $2')
-        t = t.replace(/([A-Za-z])(\d)/g, '$1 $2')
+        // BUT skip if it looks like a math expression (contains operators like +, -, =, etc.)
+        // Check if the match is part of a math expression before adding space
+        t = t.replace(/(\d)([A-Za-z])/g, (match, digit, letter, offset, string) => {
+            // Check immediate context (characters before and after) for math operators
+            const charBefore = offset > 0 ? string[offset - 1] : ' '
+            const charAfter = offset + match.length < string.length ? string[offset + match.length] : ' '
+            // Also check wider context for math expressions
+            const contextBefore = string.substring(Math.max(0, offset - 5), offset)
+            const contextAfter = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 5))
+            // If we see math operators nearby, don't add space (preserve math expressions like 3x+7=22)
+            if (/[+\-*/=<>≤≥]/.test(charBefore + charAfter + contextBefore + contextAfter)) {
+                return match
+            }
+            return `${digit} ${letter}`
+        })
+        t = t.replace(/([A-Za-z])(\d)/g, (match, letter, digit, offset, string) => {
+            // Check immediate context (characters before and after) for math operators
+            const charBefore = offset > 0 ? string[offset - 1] : ' '
+            const charAfter = offset + match.length < string.length ? string[offset + match.length] : ' '
+            // Also check wider context for math expressions
+            const contextBefore = string.substring(Math.max(0, offset - 5), offset)
+            const contextAfter = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 5))
+            // If we see math operators nearby, don't add space (preserve math expressions like x3+5)
+            if (/[+\-*/=<>≤≥]/.test(charBefore + charAfter + contextBefore + contextAfter)) {
+                return match
+            }
+            return `${letter} ${digit}`
+        })
         // Insert a space at sentence boundaries when missing: "ounce.Acustomer" -> "ounce. Acustomer"
         t = t.replace(/([a-z])([A-Z])/g, '$1 $2')
         // Fix common glued phrases (order matters - do longer patterns first)
