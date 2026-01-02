@@ -110,6 +110,8 @@ export const renderInlineMath = (text: string) => {
             let inner = isDollar ? seg.slice(1, -1) : seg.slice(2, -2)
             // Fix common malformed fractions like \frac(8)(5) → {\frac{8}{5}}
             inner = inner.replace(/\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)/g, '{\\frac{$1}{$2}}')
+            // Remove unnecessary braces around fractions: {\frac{a}{b}} → \frac{a}{b}
+            inner = inner.replace(/\{\\frac\{([^}]+)\}\{([^}]+)\}\}/g, '\\frac{$1}{$2}')
             // Ensure exponents like ^(2x+1) become ^{2x+1}
             inner = inner.replace(/\^\s*\(([^)]+)\)/g, '^{$1}')
             return <InlineMath key={i} math={inner} />

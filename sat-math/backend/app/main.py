@@ -1558,7 +1558,10 @@ def generate_ai(req: GenerateAIRequest):
             fixed_choices = []
             for c in cleaned.get("choices", []):
                 s = str(c)
-                s = re.sub(r"\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)", r"{\\frac{\1}{\2}}", s)
+                # Fix \frac(8)(5) → \frac{8}{5}
+                s = re.sub(r"\\frac\s*\(\s*([^()]+?)\s*\)\s*\(\s*([^()]+?)\s*\)", r"\\frac{\1}{\2}", s)
+                # Remove unnecessary braces around fractions: {\frac{a}{b}} → \frac{a}{b}
+                s = re.sub(r"\{\\frac\{([^}]+)\}\{([^}]+)\}\}", r"\\frac{\1}{\2}", s)
                 fixed_choices.append(s)
             cleaned["choices"] = fixed_choices
         except Exception:
