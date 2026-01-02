@@ -1045,7 +1045,7 @@ function App() {
                                             <div><span className="font-semibold">Quick check:</span> {renderInlineMath(result.explanation.quick_check)}</div>
                                         )}
                                         {result.explanation.common_mistake && (
-                                            <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
+                                            <div><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
                                         )}
                                     </div>
                                 )}
@@ -1592,7 +1592,7 @@ function ElaborateTutor(props: {
                                 <div><span className="font-semibold">Quick check:</span> {renderInline(resp.quick_check)}</div>
                             )}
                             {resp.common_mistake && (
-                                <div className="text-amber-800"><span className="font-semibold">Common mistake:</span> {renderInline(resp.common_mistake)}</div>
+                                <div><span className="font-semibold">Common mistake:</span> {renderInline(resp.common_mistake)}</div>
                             )}
                         </div>
                     )}
