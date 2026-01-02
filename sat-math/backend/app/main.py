@@ -5,7 +5,8 @@ import random
 import re
 import sys
 import time as _time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -121,12 +122,12 @@ _log = logging.getLogger("app.guardrails")
 # AI model caching infrastructure (Phase 1 optimization)
 if _HAS_GENAI:
     import time as _cache_time
-    
+
     # Cache model discovery results (TTL: 300 seconds = 5 minutes)
     _model_cache_ttl = 300
     _model_discovery_cache: dict = {"models": [], "timestamp": 0}
     _model_instance_cache: dict = {}  # model_name -> model_instance
-    
+
     def _get_cached_models() -> list:
         """Get cached model list or refresh if expired."""
         now = _cache_time.time()
@@ -143,7 +144,7 @@ if _HAS_GENAI:
             except Exception:
                 pass
         return _model_discovery_cache["models"]
-    
+
     def _get_model_instance(model_name: str, api_key: str) -> any:
         """Get cached model instance or create new one."""
         if model_name not in _model_instance_cache:
@@ -164,6 +165,7 @@ if _HAS_GENAI:
             except Exception:
                 return None
         return _model_instance_cache.get(model_name)
+
 else:
     _get_cached_models = lambda: []
     _get_model_instance = lambda name, api_key: None
@@ -828,7 +830,7 @@ def elaborate(req: ElaborateRequest):
                 str(ve)[:120],
             )
             return _fallback_stub()
-        
+
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
@@ -1122,11 +1124,15 @@ def generate_ai(req: GenerateAIRequest):
         genai.configure(api_key=api_key)
 
     # Optimized prompt: shorter, more direct, reduces token usage
+    # Critical: choices must be pure math expressions parseable by SymPy (numbers, fractions, etc.)
+    # No units, no text - just math: "5", "\\frac{3}{2}", "-7", etc.
     prompt = (
         f"DSAT Math: {req.domain} - {req.skill}. "
         "Generate one medium multiple-choice question.\n"
         "JSON only: {prompt_latex: string (KaTeX), choices: [4 strings], "
         "correct_index: 0-3, explanation_steps: [4-6 short steps]}.\n"
+        "CRITICAL: choices must be pure math expressions (numbers, fractions, decimals) - NO text, NO units. "
+        "Examples: '5', '\\frac{3}{2}', '-7', '12.5'. Use LaTeX for fractions: \\frac{{numerator}}{{denominator}}.\n"
         "Escape backslashes in LaTeX (\\frac, \\sqrt). No code fences."
     )
 
@@ -1214,10 +1220,16 @@ def generate_ai(req: GenerateAIRequest):
                     except Exception:
                         pass
                     return _fallback_mc()
-            
+
             # Log timing
             elapsed_ms = int((_time.perf_counter() - start_time) * 1000)
-            _log.info("ai_generate_time_ms name=%s domain=%s skill=%s time_ms=%d", model_name, req.domain, req.skill, elapsed_ms)
+            _log.info(
+                "ai_generate_time_ms name=%s domain=%s skill=%s time_ms=%d",
+                model_name,
+                req.domain,
+                req.skill,
+                elapsed_ms,
+            )
         except Exception as e:
             try:
                 _log.warning(
@@ -1257,7 +1269,7 @@ def generate_ai(req: GenerateAIRequest):
             except Exception:
                 pass
             return _fallback_mc()
-        
+
         if text.startswith("```"):
             text = text.strip("`")
             text = text.replace("json", "", 1).strip()
@@ -1653,22 +1665,17 @@ def streaks(user_id: str, db: Session = Depends(get_db)):
 def achievements(user_id: str, db: Session = Depends(get_db)):
     """Calculate user achievements based on their attempt history."""
     uid = user_id or "anonymous"
-    
+
     # Get all attempts for the user, ordered by ID (which reflects chronological order)
-    rows = (
-        db.query(Attempt)
-        .filter(Attempt.user_id == uid)
-        .order_by(Attempt.id.asc())
-        .all()
-    )
-    
+    rows = db.query(Attempt).filter(Attempt.user_id == uid).order_by(Attempt.id.asc()).all()
+
     achievements_list = []
-    
+
     # 1. First solve: Has at least one correct attempt
     has_correct = any(r.correct for r in rows)
     if has_correct:
         achievements_list.append("first_solve")
-    
+
     # 2. Five correct streak: Check for 5 consecutive correct answers
     consecutive_correct = 0
     max_consecutive_correct = 0
@@ -1679,17 +1686,18 @@ def achievements(user_id: str, db: Session = Depends(get_db)):
                 max_consecutive_correct = consecutive_correct
         else:
             consecutive_correct = 0
-    
+
     if max_consecutive_correct >= 5:
         achievements_list.append("five_correct_streak")
-    
+
     # 3. Seven day streak: Use the streaks endpoint logic to check current streak
     tz = ZoneInfo("America/Chicago") if ZoneInfo else None
     now_utc = datetime.now(timezone.utc)
     now_ct = now_utc.astimezone(tz) if tz else now_utc
     today = now_ct.date()
-    
+
     from collections import defaultdict
+
     per_day_counts = defaultdict(int)
     for r in rows:
         dt = getattr(r, "created_at", None)
@@ -1702,17 +1710,17 @@ def achievements(user_id: str, db: Session = Depends(get_db)):
         dt_ct = dt_utc.astimezone(tz) if tz else dt_utc
         d = dt_ct.date()
         per_day_counts[d] += 1
-    
+
     # Current streak: consecutive days ending today with >=1 attempt
     cur_streak = 0
     cursor = today
     while per_day_counts.get(cursor, 0) > 0:
         cur_streak += 1
         cursor = cursor - timedelta(days=1)
-    
+
     if cur_streak >= 7:
         achievements_list.append("seven_day_streak")
-    
+
     return AchievementsResponse(
         user_id=uid,
         achievements=achievements_list,

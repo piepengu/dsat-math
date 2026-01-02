@@ -65,7 +65,31 @@ def _validate_math_formats(skill: str, choices: List[str]) -> bool:
         ):
             # Strip LaTeX delimiters before sympy parsing
             stripped = [_strip_latex(c) for c in choices]
-            return all(_sp.sympify(c, evaluate=False) is not None for c in stripped)
+            # Try to parse each choice with SymPy
+            # More lenient: allow common patterns that SymPy might reject but are valid math
+            for c in stripped:
+                try:
+                    # Try direct parsing
+                    _sp.sympify(c, evaluate=False)
+                except Exception:
+                    # Try cleaning common issues: remove trailing text, units, etc.
+                    cleaned = c.strip()
+                    # Remove common trailing text patterns (units, words)
+                    cleaned = re.sub(
+                        r"\s+(dollars?|hours?|minutes?|seconds?|units?|items?|people|students?)$",
+                        "",
+                        cleaned,
+                        flags=re.IGNORECASE,
+                    )
+                    cleaned = cleaned.strip()
+                    if cleaned:
+                        try:
+                            _sp.sympify(cleaned, evaluate=False)
+                        except Exception:
+                            return False
+                    else:
+                        return False
+            return True
 
         if skill in ("linear_system_2x2", "quadratic_roots"):
 
