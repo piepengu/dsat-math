@@ -1,49 +1,81 @@
-﻿# DSAT Math App [![CI](https://github.com/piepengu/dsat-math/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/piepengu/dsat-math/actions/workflows/ci.yml)
+﻿# DSAT Math Forge
 
-Full-stack app for Digital SAT Math practice: original problem generation (SPR + MC), auto-grading with explanations, session mode with SAT score estimate, persistence (SQLite), and basic analytics.
+Full-stack **Digital SAT Math** practice app: generate original SPR/MC items, auto-grade with explanations, estimate a session score, and track attempts with basic analytics.
 
-## Repository Structure
-- sat-math/
-  - backend/ FastAPI (generate, grade, attempts, stats)
-  - frontend/ React + TypeScript (KaTeX, MC + SPR, sessions, stats)
-- SAT_MATH/ Docs
-- PROGRESS_TODAY.txt Summary
+## Overview
 
-## Backend (FastAPI)
-Windows PowerShell
-```powershell
+Students get infinite practice from templated + Gemini-assisted generators (with output guardrails). The FastAPI backend grades answers and estimates score; the React frontend renders KaTeX, multiple-choice / student-produced response (SPR) flows, sessions, and stats.
+
+## Architecture
+
+```
+React + Vite (KaTeX UI)
+        │  HTTP
+        ▼
+FastAPI  ──► generators / guardrails / grader / score estimator
+        │
+        ▼
+SQLite (attempts + stats)
+```
+
+## Tech stack
+
+| Layer | Tools |
+|-------|--------|
+| Backend | Python 3.11+, FastAPI, Uvicorn, SymPy, SciPy, SQLAlchemy, Pydantic |
+| AI | Google Gemini (`google-generativeai`) for MC distractors / enrichment |
+| Frontend | React, TypeScript, Vite, KaTeX, Recharts |
+| Quality | pytest (generators + guardrails), GitHub Actions CI |
+
+## Quickstart
+
+```bash
+git clone https://github.com/piepengu/dsat-math.git
+cd dsat-math
+```
+
+### Backend
+
+```bash
 cd sat-math/backend
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+# Windows: .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # optional GEMINI_API_KEY for AI MC generation
 uvicorn app.main:app --reload
 ```
-- Health: http://127.0.0.1:8000/health
-- Endpoints: POST /generate, POST /grade, POST /estimate, GET /attempts, GET /stats
 
-## Frontend (React + Vite)
-Windows PowerShell
-```powershell
+- Health: http://127.0.0.1:8000/health  
+- Core routes: `POST /generate`, `POST /grade`, `POST /estimate`, `GET /attempts`, `GET /stats`
+
+### Frontend
+
+```bash
 cd sat-math/frontend
 npm install
-npm run dev -- --open
+npm run dev
 ```
-- Default: http://localhost:5173
 
-## Tests
-Windows PowerShell
-```powershell
+App: http://localhost:5173
+
+### Tests & CI
+
+```bash
 cd sat-math/backend
-.venv\Scripts\Activate.ps1
 pytest -q
 ```
 
-## CI
-GitHub Actions runs backend tests and frontend build on every push/PR.
+GitHub Actions runs backend tests and the frontend build on every push/PR ([CI badge](https://github.com/piepengu/dsat-math/actions/workflows/ci.yml)).
 
-## Next Steps
-- Expand templates (Advanced Math, Geometry/Trig, PSD) and add diagrams
-- MC versions for more skills with targeted distractors and feedback
-- Adaptive practice and difficulty tuning
-- Auth + user sessions; richer analytics dashboard
-- Deploy backend (Render/Fly) and frontend (Netlify/Vercel)
+## Engineering notes
+
+- Deterministic **seeded generators** for reproducible practice items
+- **Guardrails** sanitize / validate model output before it reaches students
+- Score **estimator** maps session performance to a Digital SAT–style band
+
+More detail: [`sat-math/backend/README.md`](./sat-math/backend/README.md).
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
