@@ -101,6 +101,8 @@ function App() {
     const [answer, setAnswer] = useState('')
     const [result, setResult] = useState<GradeResponse | null>(null)
     const [loading, setLoading] = useState(false)
+    const [loadPhase, setLoadPhase] = useState<'idle' | 'waking' | 'generating' | 'grading'>('idle')
+    const [elapsedMs, setElapsedMs] = useState<number | null>(null)
     const [inSession, setInSession] = useState(false)
     const [sessionLen, setSessionLen] = useState(10)
     const [questionIdx, setQuestionIdx] = useState(0)
@@ -173,8 +175,13 @@ function App() {
             // Not JSON, return as-is but clean up
         }
         if (error.includes('Network Error')) return 'Network error. Please check your connection.'
-        if (error.includes('timeout')) return 'Request timed out. Please try again.'
+        if (error.includes('timeout') || error.includes('ECONNABORTED')) {
+            return 'Request timed out. The free server may still be waking up — try again in a moment.'
+        }
         if (error.includes('404')) return 'Service unavailable. Please try again later.'
+        if (error.includes('503') || error.includes('502')) {
+            return 'Server is starting up. Please wait a few seconds and try again.'
+        }
         return error.length > 100 ? error.substring(0, 100) + '...' : error
     }
 
@@ -394,6 +401,7 @@ function App() {
 
     const loadQuestion = async () => {
         setLoading(true)
+        setLoadPhase('generating')
         setResult(null)
         setAnswer('')
         setSelectedIdx(null)
@@ -401,6 +409,7 @@ function App() {
         setLastError(null)
         setAiCorrectIndex(null)
         setAiExplanation(null)
+        setElapsedMs(null)
         try {
             // If adaptive mode is on, fetch next suggested difficulty
             if (adaptive) {
@@ -455,6 +464,7 @@ function App() {
             setAiGenStartTs(null) // Clear on error
         } finally {
             setLoading(false)
+            setLoadPhase('idle')
         }
     }
 
@@ -483,9 +493,12 @@ function App() {
 
     const submit = async () => {
         if (seed == null) return
-        // Stop timer immediately when submitting
+        // Capture and freeze elapsed time before clearing the live timer
+        const timeMs = startTs ? Math.max(0, Date.now() - startTs) : undefined
+        setElapsedMs(timeMs ?? null)
         setStartTs(null)
         setLoading(true)
+        setLoadPhase('grading')
         setLastError(null)
         try {
             if (useAI && choices && aiCorrectIndex != null) {
@@ -505,6 +518,7 @@ function App() {
                 }
                 // Release UI immediately; persist AI attempt in background
                 setLoading(false)
+                setLoadPhase('idle')
                 void (async () => {
                     try {
                         await axios.post(`${apiBase}/attempt_ai`, {
@@ -515,7 +529,7 @@ function App() {
                             correct_index: aiCorrectIndex,
                             correct_answer: correctAnswer,
                             seed: -1,
-                            time_ms: startTs ? Math.max(0, Date.now() - startTs) : undefined,
+                            time_ms: timeMs,
                             difficulty,
                         })
                         // Invalidate cache after submitting answer
@@ -540,7 +554,7 @@ function App() {
                 } else {
                     payload.user_answer = answer
                 }
-                if (startTs) payload.time_ms = Math.max(0, Date.now() - startTs)
+                if (timeMs != null) payload.time_ms = timeMs
                 payload.source = useAI ? 'ai' : 'template'
                 payload.difficulty = difficulty
                 const resp = await axios.post<GradeResponse>(`${apiBase}/grade`, payload)
@@ -559,17 +573,44 @@ function App() {
             setLastError(msg)
         } finally {
             setLoading(false)
+            setLoadPhase('idle')
         }
     }
 
     useEffect(() => {
-        // initial question
-        void loadQuestion()
+        // Warm the free-tier API, then load the first question
+        let cancelled = false
+        ;(async () => {
+            setLoading(true)
+            setLoadPhase('waking')
+            try {
+                await axios.get(`${apiBase}/health`, { timeout: 90000 })
+            } catch {
+                // Still attempt generate; cold start may recover
+            }
+            if (!cancelled) {
+                await loadQuestion()
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    const loadingLabel = (() => {
+        if (loadPhase === 'waking') return 'Waking server…'
+        if (loadPhase === 'grading') return 'Checking…'
+        if (loadPhase === 'generating' && useAI) {
+            const secs = aiGenStartTs ? Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000)) : 0
+            return secs > 0 ? `Generating… ${secs}s` : 'Generating…'
+        }
+        if (loadPhase === 'generating') return 'Loading question…'
+        return 'Loading…'
+    })()
+
     return (
-        <div className="min-h-screen bg-gray-200 text-gray-900">
+        <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-blue-50 text-gray-900">
             <div className="max-w-3xl mx-auto p-6">
                 {/* Debug banner removed for production; keep a hidden error node to satisfy TS usage */}
                 {lastError && (
@@ -578,7 +619,7 @@ function App() {
                     </div>
                 )}
                 <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-2xl font-semibold text-blue-600">DSAT Math Forge</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-blue-700">DSAT Math Forge</h2>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowAbout(true)}
@@ -603,6 +644,16 @@ function App() {
                     <p className="text-gray-700 text-base mb-1">Free AI-powered Digital SAT Math practice with instant step-by-step explanations.</p>
                     <p className="text-gray-500 text-sm">No login • 100% free</p>
                 </div>
+                {loading && !latex && (
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        <div className="font-medium">{loadingLabel}</div>
+                        {loadPhase === 'waking' && (
+                            <p className="mt-1 text-blue-800/80">
+                                Free hosting may take up to ~45s to wake. Hang tight — practice starts right after.
+                            </p>
+                        )}
+                    </div>
+                )}
                 <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 shadow-sm">
                     <div className="flex flex-wrap gap-2 items-center mb-3">
                         <select
@@ -661,7 +712,7 @@ function App() {
                             ))}
                         </select>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                             disabled={loading || inSession}
                             onClick={() => {
                                 setEstimate(null)
@@ -675,24 +726,15 @@ function App() {
                             {loading ? (
                                 <>
                                     <span className="animate-spin mr-2">⏳</span>
-                                    {useAI ? (
-                                        <>
-                                            Generating...
-                                            {aiGenStartTs && (
-                                                <span className="ml-2 text-xs opacity-75">
-                                                    (~{Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000))}s / ~30s)
-                                                </span>
-                                            )}
-                                        </>
-                                    ) : (
-                                        'Loading...'
-                                    )}
+                                    {loadingLabel}
                                 </>
                             ) : (
                                 'Next question'
                             )}
                         </button>
-                        <div className="ml-auto text-xs text-gray-500">User: {userId || '...'}</div>
+                        <div className="ml-auto text-xs text-gray-400" title="Anonymous practice ID">
+                            {userId || '…'}
+                        </div>
                     </div>
                 </div>
 
@@ -711,7 +753,7 @@ function App() {
                             />
                         </label>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-gray-800 hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             disabled={loading || inSession}
                             onClick={async () => {
                                 setEstimate(null)
@@ -747,7 +789,7 @@ function App() {
                         <div className="text-sm text-gray-500 mb-2">
                             Skill: {skillOptions[domain].find(s => s.value === skill)?.label || skill} • Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
                         </div>
-                        <div className="bg-white border border-gray-200 rounded-md shadow-sm p-5 mb-3 whitespace-pre-wrap">
+                        <div className="question-card bg-white border-2 border-slate-200 rounded-xl shadow-md p-6 mb-3 whitespace-pre-wrap text-lg leading-relaxed">
                             {useAI
                                 ? (() => {
                                     const norm = normalizeLatex(latex)
@@ -815,9 +857,16 @@ function App() {
                     </>
                 )}
 
-                {/* live timer */}
+                {/* live + final timer */}
                 {startTs != null && result == null && (
-                    <div className="text-sm text-gray-600 mb-2">Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s</div>
+                    <div className="text-sm font-medium text-slate-600 mb-2 tabular-nums">
+                        Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s
+                    </div>
+                )}
+                {result && elapsedMs != null && (
+                    <div className="text-sm text-slate-500 mb-2 tabular-nums">
+                        Solved in {(elapsedMs / 1000).toFixed(1)}s
+                    </div>
                 )}
 
                 {/* hints */}
@@ -922,15 +971,15 @@ function App() {
                         />
                     )}
                     <button
-                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         disabled={loading || seed == null}
                         onClick={submit}
                     >
-                        Submit
+                        {loadPhase === 'grading' ? 'Checking…' : 'Submit'}
                     </button>
                     {inSession && result && (
                         <button
-                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-gray-800 hover:bg-slate-800 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                             disabled={loading}
                             onClick={async () => {
                                 const nextIdx = questionIdx + 1
@@ -1064,7 +1113,7 @@ function App() {
                                         {m.domain} · {m.skill} · {m.difficulty}
                                     </div>
                                     <button
-                                        className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 text-sm"
+                                        className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
                                         onClick={async () => {
                                             setDomain(m.domain)
                                             setSkill(m.skill)
@@ -1082,7 +1131,7 @@ function App() {
                         </ul>
                         <div className="mt-3">
                             <button
-                                className="inline-flex items-center px-3 py-1.5 rounded bg-slate-700 text-gray-800 hover:bg-slate-800 text-sm"
+                                className="inline-flex items-center px-3 py-1.5 rounded bg-slate-700 text-white hover:bg-slate-800 text-sm"
                                 onClick={() => setMissed([])}
                             >
                                 Clear review list
@@ -1115,7 +1164,7 @@ function App() {
                 <div className="mt-4 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
                     <div className="flex flex-wrap gap-2 items-center">
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1149,7 +1198,7 @@ function App() {
                             📊 My Stats
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-gray-800 hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             disabled={streaksLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1180,7 +1229,7 @@ function App() {
                             {streaksLoading ? 'Loading…' : '🔥 My Streaks'}
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-gray-800 hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                             disabled={achievementsLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1211,7 +1260,7 @@ function App() {
                             {achievementsLoading ? 'Loading…' : '🏆 My Achievements'}
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-gray-800 hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1565,7 +1614,7 @@ function ElaborateTutor(props: {
                     />
                     <div className="mt-2 flex items-center gap-2">
                         <button
-                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-gray-800 hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
+                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
                             disabled={loading || !q.trim()}
                             onClick={submit}
                         >

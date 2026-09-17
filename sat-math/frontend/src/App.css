@@ -5,6 +5,14 @@
   text-align: center;
 }
 
+.question-card .katex {
+  font-size: 1.15em;
+}
+
+.question-card .katex-display {
+  margin: 0.6em 0;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

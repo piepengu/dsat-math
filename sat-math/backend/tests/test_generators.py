@@ -28,6 +28,10 @@ def test_linear_equation(seed: int):
     assert ok is True
     assert sol == item.solution_str
     assert isinstance(steps, list) and len(steps) >= 1
+    # Never say "Subtract -N" / "Add -N" — use natural Add/Subtract wording
+    for step in steps:
+        assert "Subtract -" not in step
+        assert "Add -" not in step
 
 
 @pytest.mark.parametrize("seed", [7, 100, 555])
@@ -39,6 +43,9 @@ def test_two_step_equation(seed: int):
     assert ok is True
     assert sol == item.solution_str
     assert isinstance(steps, list) and len(steps) >= 1
+    for step in steps:
+        assert "Subtract -" not in step
+        assert "Add -" not in step
 
 
 @pytest.mark.parametrize("seed", [3, 9, 21])

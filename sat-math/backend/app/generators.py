@@ -27,6 +27,15 @@ class GeneratedItem:
     common_mistake: Optional[str] = None
 
 
+def _undo_constant_step(constant: int, var_term: str, rhs: int) -> str:
+    """Describe moving a constant off the variable term with natural Add/Subtract wording."""
+    if constant > 0:
+        return f"Subtract {constant} from both sides: {var_term} = {rhs - constant}"
+    if constant < 0:
+        return f"Add {-constant} to both sides: {var_term} = {rhs - constant}"
+    return f"{var_term} = {rhs}"
+
+
 def generate_linear_equation(seed: int) -> GeneratedItem:
     rng = random.Random(seed)
     # a(x + b) = c with integer solution
@@ -38,11 +47,12 @@ def generate_linear_equation(seed: int) -> GeneratedItem:
 
     prompt_latex = f"Solve for x: {a}(x {b:+}) = {c}"
     solution = sp.Integer(root)
+    distributed_const = a * b
 
     steps: List[str] = [
-        f"Distribute: {a}x {a*b:+} = {c}",
-        f"Subtract {a*b:+} from both sides: {a}x = {c - a*b}",
-        f"Divide by {a}: x = {(c - a*b)//a}",
+        f"Distribute: {a}x {distributed_const:+} = {c}",
+        _undo_constant_step(distributed_const, f"{a}x", c),
+        f"Divide by {a}: x = {(c - distributed_const)//a}",
     ]
 
     return GeneratedItem(
@@ -164,7 +174,7 @@ def generate_two_step_equation(seed: int) -> GeneratedItem:
 
     prompt_latex = f"Solve for x: {a}x {b:+} = {c}"
     steps: List[str] = [
-        f"Subtract {b:+} from both sides: {a}x = {c - b}",
+        _undo_constant_step(b, f"{a}x", c),
         f"Divide by {a}: x = {(c - b)//a}",
     ]
     return GeneratedItem(
