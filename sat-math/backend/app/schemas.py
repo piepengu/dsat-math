@@ -9,19 +9,6 @@ class GenerateRequest(BaseModel):
     seed: Optional[int] = None
 
 
-class GenerateResponse(BaseModel):
-    domain: str
-    skill: str
-    format: str
-    seed: int
-    prompt_latex: str
-    choices: Optional[List[str]] = None
-    diagram: Optional["DiagramSpec"] = None
-    hints: Optional[List[str]] = None
-    # Optional rich explanation (concept/plan/check/mistake)
-    explanation: Optional["Explanation"] = None
-
-
 class DiagramSpec(BaseModel):
     type: str  # e.g., "right_triangle", "triangle"
     # Right triangle legacy fields
@@ -37,6 +24,26 @@ class DiagramSpec(BaseModel):
     showLabels: Optional[bool] = None
     # Triangle definition parameters (e.g., mode + values)
     triangle: Optional[Dict[str, object]] = None
+
+
+class Explanation(BaseModel):
+    concept: Optional[str] = None
+    plan: Optional[str] = None
+    quick_check: Optional[str] = None
+    common_mistake: Optional[str] = None
+
+
+class GenerateResponse(BaseModel):
+    domain: str
+    skill: str
+    format: str
+    seed: int
+    prompt_latex: str
+    choices: Optional[List[str]] = None
+    diagram: Optional[DiagramSpec] = None
+    hints: Optional[List[str]] = None
+    # Optional rich explanation (concept/plan/check/mistake)
+    explanation: Optional[Explanation] = None
 
 
 class GradeRequest(BaseModel):
@@ -58,7 +65,7 @@ class GradeResponse(BaseModel):
     why_correct: Optional[str] = None
     why_incorrect_selected: Optional[str] = None
     # New richer explanation payload (optional for backward compatibility)
-    explanation: Optional["Explanation"] = None
+    explanation: Optional[Explanation] = None
 
 
 class AttemptOut(BaseModel):
@@ -98,7 +105,7 @@ class GenerateAIResponse(BaseModel):
     explanation_steps: List[str]
     diagram: Optional[DiagramSpec] = None
     hints: Optional[List[str]] = None
-    explanation: Optional["Explanation"] = None
+    explanation: Optional[Explanation] = None
 
 
 class AttemptAIRequest(BaseModel):
@@ -116,13 +123,6 @@ class AttemptAIRequest(BaseModel):
 class AttemptAIResponse(BaseModel):
     ok: bool
     correct: bool
-
-
-class Explanation(BaseModel):
-    concept: Optional[str] = None
-    plan: Optional[str] = None
-    quick_check: Optional[str] = None
-    common_mistake: Optional[str] = None
 
 
 class NextRequest(BaseModel):
