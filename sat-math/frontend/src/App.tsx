@@ -609,90 +609,114 @@ function App() {
         return 'Loading…'
     })()
 
+    const elapsedSec = startTs != null && result == null
+        ? (nowTs - startTs) / 1000
+        : (elapsedMs != null ? elapsedMs / 1000 : 0)
+    const questionNo = inSession ? questionIdx + 1 : 1
+
+    const renderQuestionBody = () => {
+        const norm = normalizeLatex(latex)
+        const plain = maybeRenderPlainText(norm)
+        if (plain) return plain
+        if (/\\\[[\s\S]*?\\\]/.test(norm)) {
+            const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
+            return parts.map((seg, i) =>
+                seg.startsWith('\\[') && seg.endsWith('\\]') ? (
+                    <div key={i} className="my-2">
+                        <BlockMath math={seg.slice(2, -2)} />
+                    </div>
+                ) : (
+                    <span key={i}>{renderInlineMath(seg)}</span>
+                )
+            )
+        }
+        if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
+        if (norm.includes('$$')) {
+            return norm.split('$$').map((seg, i) =>
+                i % 2 === 1 ? (
+                    <div key={i} className="my-2">
+                        <BlockMath math={seg} />
+                    </div>
+                ) : (
+                    <span key={i}>{renderInlineMath(seg)}</span>
+                )
+            )
+        }
+        return renderWithEnvironments(norm)
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-blue-50 text-gray-900">
-            <div className="max-w-3xl mx-auto p-6">
+        <div className="forge-app">
+            <div className="forge-shell">
                 {/* Debug banner removed for production; keep a hidden error node to satisfy TS usage */}
                 {lastError && (
-                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
-                        ⚠️ {formatError(lastError)}
+                    <div className="forge-error">
+                        {formatError(lastError)}
                     </div>
                 )}
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-3xl font-bold tracking-tight text-blue-700">DSAT Math Forge</h2>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setShowAbout(true)}
-                            className="text-gray-500 hover:text-gray-700 text-lg font-bold w-6 h-6 rounded-full border border-gray-300 hover:border-gray-400 flex items-center justify-center transition-colors"
-                            aria-label="About DSAT Math Forge"
-                            title="About"
-                        >
-                            ⓘ
+                <header className="forge-masthead">
+                    <div>
+                        <h1 className={`forge-word ${loading && loadPhase !== 'idle' ? 'is-pouring' : ''}`}>DSAT Math Forge</h1>
+                        <p className="forge-kicker">Digital SAT practice · struck in copper</p>
+                    </div>
+                    <nav className="forge-nav">
+                        <button type="button" onClick={() => setShowAbout(true)} aria-label="About DSAT Math Forge">
+                            About
                         </button>
-                        <a
-                            className="text-sm text-indigo-700 hover:underline"
-                            href="formulas.html"
-                            target="_blank"
-                            rel="noopener"
-                            aria-label="Open formula sheet"
-                        >
+                        <a href="formulas.html" target="_blank" rel="noopener" aria-label="Open formula sheet">
                             Formula sheet
                         </a>
-                    </div>
-                </div>
-                <div className="mb-4">
-                    <p className="text-gray-700 text-base mb-1">Free AI-powered Digital SAT Math practice with instant step-by-step explanations.</p>
-                    <p className="text-gray-500 text-sm">No login • 100% free</p>
-                </div>
+                    </nav>
+                </header>
+
                 {loading && !latex && (
-                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    <div className="forge-banner">
                         <div className="font-medium">{loadingLabel}</div>
                         {loadPhase === 'waking' && (
-                            <p className="mt-1 text-blue-800/80">
-                                Free hosting may take up to ~45s to wake. Hang tight — practice starts right after.
+                            <p className="mt-1 text-sm opacity-80">
+                                Free hosting may take up to ~45s to wake. The booklet opens right after.
                             </p>
                         )}
                     </div>
                 )}
-                <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 shadow-sm">
-                    <div className="flex flex-wrap gap-2 items-center mb-3">
-                        <select
-                            className="border rounded px-3 py-2 bg-white"
-                            value={domain}
-                            onChange={(e) => {
-                                const d = e.target.value as Domain
-                                setDomain(d)
-                                const first = (skillOptions[d][0]?.value || 'linear_equation') as Skill
-                                setSkill(first)
-                            }}
-                        >
-                            <option value="Algebra">Algebra</option>
-                            <option value="PSD">Problem Solving & Data Analysis</option>
-                            <option value="Advanced">Advanced Math</option>
-                            <option value="Geometry">Geometry & Trig</option>
-                        </select>
-                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                            <input
-                                type="checkbox"
-                                className="accent-indigo-600"
-                                checked={useAI}
-                                onChange={(e) => setUseAI(e.target.checked)}
-                            />
-                            Use AI
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                            <input
-                                type="checkbox"
-                                className="accent-emerald-600"
-                                checked={adaptive}
-                                onChange={(e) => setAdaptive(e.target.checked)}
-                            />
-                            Adaptive mode
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-700 ml-2">
-                            Difficulty:
+
+                <div className="forge-book">
+                    <aside className="forge-page forge-left">
+                        <p className="forge-section-label">Instructions</p>
+                        <label className="forge-field">
+                            <span>Domain</span>
                             <select
-                                className="border rounded px-2 py-1 bg-white disabled:opacity-60"
+                                className="forge-select"
+                                value={domain}
+                                onChange={(e) => {
+                                    const d = e.target.value as Domain
+                                    setDomain(d)
+                                    const first = (skillOptions[d][0]?.value || 'linear_equation') as Skill
+                                    setSkill(first)
+                                }}
+                            >
+                                <option value="Algebra">Algebra</option>
+                                <option value="PSD">Problem Solving & Data Analysis</option>
+                                <option value="Advanced">Advanced Math</option>
+                                <option value="Geometry">Geometry & Trig</option>
+                            </select>
+                        </label>
+                        <label className="forge-field">
+                            <span>Skill</span>
+                            <select
+                                className="forge-select"
+                                value={skill}
+                                onChange={(e) => setSkill(e.target.value as Skill)}
+                            >
+                                {allowedSkills.map((s) => (
+                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="forge-field">
+                            <span>Difficulty</span>
+                            <select
+                                className="forge-select"
                                 value={difficulty}
                                 onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
                                 disabled={adaptive}
@@ -702,58 +726,54 @@ function App() {
                                 <option value="hard">Hard</option>
                             </select>
                         </label>
-                        <select
-                            className="border rounded px-3 py-2 bg-white"
-                            value={skill}
-                            onChange={(e) => setSkill(e.target.value as Skill)}
-                        >
-                            {allowedSkills.map((s) => (
-                                <option key={s.value} value={s.value}>{s.label}</option>
-                            ))}
-                        </select>
-                        <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                            disabled={loading || inSession}
-                            onClick={() => {
-                                setEstimate(null)
-                                setSessionSummary(null)
-                                setQuestionIdx(0)
-                                setNumCorrect(0)
-                                setInSession(false)
-                                void loadQuestion()
-                            }}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="animate-spin mr-2">⏳</span>
-                                    {loadingLabel}
-                                </>
-                            ) : (
-                                'Next question'
-                            )}
-                        </button>
-                        <div className="ml-auto text-xs text-gray-400" title="Anonymous practice ID">
-                            {userId || '…'}
+                        <div className="forge-toggles">
+                            <label className="forge-check">
+                                <input
+                                    type="checkbox"
+                                    checked={useAI}
+                                    onChange={(e) => setUseAI(e.target.checked)}
+                                />
+                                Use AI
+                            </label>
+                            <label className="forge-check">
+                                <input
+                                    type="checkbox"
+                                    checked={adaptive}
+                                    onChange={(e) => setAdaptive(e.target.checked)}
+                                />
+                                Adaptive
+                            </label>
                         </div>
-                    </div>
-                </div>
-
-                <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 shadow-sm">
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <label className="text-sm text-gray-700">
-                            Session size:
+                        <div className="forge-actions">
+                            <button
+                                className="forge-btn forge-btn-primary"
+                                disabled={loading || inSession}
+                                onClick={() => {
+                                    setEstimate(null)
+                                    setSessionSummary(null)
+                                    setQuestionIdx(0)
+                                    setNumCorrect(0)
+                                    setInSession(false)
+                                    void loadQuestion()
+                                }}
+                            >
+                                {loading && loadPhase !== 'grading' ? loadingLabel : 'Next question'}
+                            </button>
+                        </div>
+                        <label className="forge-field" style={{ marginTop: '1.1rem' }}>
+                            <span>Session length</span>
                             <input
+                                className="forge-input"
                                 type="number"
                                 min={1}
                                 max={44}
                                 value={sessionLen}
                                 onChange={(e) => setSessionLen(parseInt(e.target.value || '1', 10))}
-                                className="ml-2 w-20 border rounded px-2 py-1"
                                 disabled={inSession}
                             />
                         </label>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            className="forge-btn forge-btn-copper"
                             disabled={loading || inSession}
                             onClick={async () => {
                                 setEstimate(null)
@@ -767,120 +787,67 @@ function App() {
                             Start session
                         </button>
                         {(inSession || adaptive) && (
-                            <div className="text-sm text-gray-600">
-                                {inSession && (
-                                    <>Q {questionIdx + 1} / {sessionLen} · Correct: {numCorrect}</>
-                                )}
-                                {adaptive && (
-                                    <span className="ml-2 text-emerald-700">Adaptive: {difficulty}</span>
-                                )}
+                            <div className="forge-session-meta">
+                                {inSession && <>Question {questionIdx + 1} of {sessionLen} · {numCorrect} correct</>}
+                                {adaptive && <span>{inSession ? ' · ' : ''}Adaptive: {difficulty}</span>}
                             </div>
                         )}
-                    </div>
-                </div>
-                {inSession && (
-                    <div className="w-full h-2 bg-gray-200 rounded mb-3">
-                        <div className="h-2 bg-blue-600 rounded" style={{ width: `${((questionIdx + 1) / sessionLen) * 100}%` }} />
-                    </div>
-                )}
+                        {inSession && (
+                            <div className="forge-progress" aria-hidden>
+                                <span style={{ width: `${((questionIdx + 1) / sessionLen) * 100}%` }} />
+                            </div>
+                        )}
+                    </aside>
+                    <section className="forge-page forge-right">
+                        <p className="forge-section-label">Question</p>
 
                 {latex && (
-                    <>
-                        <div className="text-sm text-gray-500 mb-2">
-                            Skill: {skillOptions[domain].find(s => s.value === skill)?.label || skill} • Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                    <div className="forge-stem" key={latex}>
+                        <div className="forge-qnum" aria-hidden>
+                            <svg className="forge-timer" viewBox="0 0 44 44">
+                                <circle className="forge-timer-track" cx="22" cy="22" r="18" />
+                                <circle
+                                    className="forge-timer-fill"
+                                    cx="22"
+                                    cy="22"
+                                    r="18"
+                                    strokeDasharray={2 * Math.PI * 18}
+                                    strokeDashoffset={2 * Math.PI * 18 * (1 - Math.min(1, elapsedSec / 90))}
+                                />
+                            </svg>
+                            <div className="forge-qnum-text">{questionNo}</div>
                         </div>
-                        <div className="question-card bg-white border-2 border-slate-200 rounded-xl shadow-md p-6 mb-3 whitespace-pre-wrap text-center text-lg leading-relaxed">
-                            {useAI
-                                ? (() => {
-                                    const norm = normalizeLatex(latex)
-                                    const plain = maybeRenderPlainText(norm)
-                                    if (plain) return plain
-                                    // Handle block math delimiters \[ ... \]
-                                    if (/\\\[[\s\S]*?\\\]/.test(norm)) {
-                                        const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
-                                        return parts.map((seg, i) =>
-                                            seg.startsWith('\\[') && seg.endsWith('\\]') ? (
-                                                <div key={i} className="my-2">
-                                                    <BlockMath math={seg.slice(2, -2)} />
-                                                </div>
-                                            ) : (
-                                                <span key={i}>{renderInlineMath(seg)}</span>
-                                            )
-                                        )
-                                    }
-                                    if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
-                                    if (norm.includes('$$')) {
-                                        return norm.split('$$').map((seg, i) =>
-                                            i % 2 === 1 ? (
-                                                <div key={i} className="my-2">
-                                                    <BlockMath math={seg} />
-                                                </div>
-                                            ) : (
-                                                <span key={i}>{renderInlineMath(seg)}</span>
-                                            )
-                                        )
-                                    }
-                                    return renderWithEnvironments(norm)
-                                })()
-                                : (() => {
-                                    const norm = normalizeLatex(latex)
-                                    const plain = maybeRenderPlainText(norm)
-                                    if (plain) return plain
-                                    // Handle block math delimiters \[ ... \]
-                                    if (/\\\[[\s\S]*?\\\]/.test(norm)) {
-                                        const parts = norm.split(/(\\\[[\s\S]*?\\\])/g)
-                                        return parts.map((seg, i) =>
-                                            seg.startsWith('\\[') && seg.endsWith('\\]') ? (
-                                                <div key={i} className="my-2">
-                                                    <BlockMath math={seg.slice(2, -2)} />
-                                                </div>
-                                            ) : (
-                                                <span key={i}>{renderInlineMath(seg)}</span>
-                                            )
-                                        )
-                                    }
-                                    if (shouldRenderAsBlock(norm)) return <BlockMath math={norm} />
-                                    if (norm.includes('$$')) {
-                                        return norm.split('$$').map((seg, i) =>
-                                            i % 2 === 1 ? (
-                                                <div key={i} className="my-2">
-                                                    <BlockMath math={seg} />
-                                                </div>
-                                            ) : (
-                                                <span key={i}>{renderInlineMath(seg)}</span>
-                                            )
-                                        )
-                                    }
-                                    return renderWithEnvironments(norm)
-                                })()}
+                        <div>
+                            <div className="forge-skill-line">
+                                {skillOptions[domain].find(s => s.value === skill)?.label || skill}
+                                {' · '}
+                                {difficulty}
+                            </div>
+                            <div className="question-card">
+                                {renderQuestionBody()}
+                            </div>
+                            {(startTs != null && result == null) || (result && elapsedMs != null) ? (
+                                <div className="forge-time-caption">
+                                    {result && elapsedMs != null
+                                        ? `Solved in ${elapsedSec.toFixed(1)}s`
+                                        : `${elapsedSec.toFixed(1)}s`}
+                                </div>
+                            ) : null}
                         </div>
-                    </>
-                )}
-
-                {/* live + final timer */}
-                {startTs != null && result == null && (
-                    <div className="text-sm font-medium text-slate-600 mb-2 tabular-nums">
-                        Time: {(((nowTs - (startTs || nowTs)) / 1000)).toFixed(1)}s
-                    </div>
-                )}
-                {result && elapsedMs != null && (
-                    <div className="text-sm text-slate-500 mb-2 tabular-nums">
-                        Solved in {(elapsedMs / 1000).toFixed(1)}s
                     </div>
                 )}
 
-                {/* hints */}
                 {(hints && hints.length > 0) && (
-                    <div className="mb-3">
+                    <div className="forge-hint">
                         <button
-                            className="inline-flex items-center px-3 py-1.5 rounded bg-amber-200 text-amber-900 hover:bg-amber-300 text-sm"
+                            className="forge-btn forge-btn-ghost"
                             onClick={() => setHintsShown((n) => Math.min(hints.length, n + 1))}
                             disabled={hintsShown >= hints.length}
                         >
                             {hintsShown >= hints.length ? 'All hints shown' : 'Need a hint?'}
                         </button>
                         {hintsShown > 0 && (
-                            <ul className="mt-2 list-disc list-inside text-sm text-gray-800 space-y-1">
+                            <ul className="mt-2 list-disc list-inside text-sm space-y-1">
                                 {hints.slice(0, hintsShown).map((h, i) => (
                                     <li key={i}>{h}</li>
                                 ))}
@@ -892,10 +859,9 @@ function App() {
                 {diagram && (
                     <div className="mb-3">
                         <div className="flex items-center gap-3 mb-2">
-                            <label className="text-sm text-gray-700 flex items-center gap-2">
+                            <label className="forge-check">
                                 <input
                                     type="checkbox"
-                                    className="accent-indigo-600"
                                     checked={labelsOn}
                                     onChange={(e) => setLabelsOn(e.target.checked)}
                                 />
@@ -917,38 +883,38 @@ function App() {
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="forge-answer-row">
                     {choices && choices.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                        <div className="forge-choices w-full">
                             {(() => {
+                                const letters = ['A', 'B', 'C', 'D', 'E']
                                 const resolvedCorrectIdx = useAI && aiCorrectIndex != null
                                     ? aiCorrectIndex
                                     : (result && choices ? choices.findIndex((cc) => cc === result.correct_answer) : -1)
                                 return choices.map((c, idx) => {
-                                    let base = 'flex items-center gap-2 px-3 py-2 border rounded cursor-pointer hover:bg-gray-50 '
+                                    let cls = 'forge-choice'
                                     if (result) {
-                                        if (idx === resolvedCorrectIdx) base += 'border-emerald-600 bg-emerald-50 '
-                                        else if (selectedIdx === idx && !result.correct) base += 'border-red-600 bg-red-50 '
-                                        else base += 'border-gray-300 '
-                                    } else {
-                                        base += selectedIdx === idx ? 'border-indigo-600 bg-indigo-50 ' : 'border-gray-300 '
+                                        if (idx === resolvedCorrectIdx) cls += ' is-correct'
+                                        else if (selectedIdx === idx && !result.correct) cls += ' is-wrong'
+                                    } else if (selectedIdx === idx) {
+                                        cls += ' is-selected'
                                     }
                                     return (
-                                        <label key={idx} className={base}>
+                                        <label key={idx} className={cls}>
                                             <input
                                                 type="radio"
-                                                className="accent-indigo-600"
                                                 name="mc"
                                                 checked={selectedIdx === idx}
                                                 onChange={() => setSelectedIdx(idx)}
                                                 disabled={!!result}
                                             />
+                                            <span className="forge-bubble">{letters[idx] || idx + 1}</span>
                                             <span className="flex items-center gap-2">{renderInlineMath(c)}</span>
                                             {result && idx === resolvedCorrectIdx && (
-                                                <span className="ml-auto text-xs text-emerald-700">Correct</span>
+                                                <span className="forge-choice-mark">Correct</span>
                                             )}
                                             {result && selectedIdx === idx && !result.correct && (
-                                                <span className="ml-auto text-xs text-red-700">Your choice</span>
+                                                <span className="forge-choice-mark">Yours</span>
                                             )}
                                         </label>
                                     )
@@ -958,7 +924,7 @@ function App() {
                     ) : (
                         <input
                             ref={answerInputRef}
-                            className="border border-gray-300 rounded px-3 py-2 flex-1 min-w-[220px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="forge-input"
                             value={answer}
                             onChange={(e) => setAnswer(e.target.value)}
                             onKeyDown={(e) => {
@@ -971,7 +937,7 @@ function App() {
                         />
                     )}
                     <button
-                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        className="forge-btn forge-btn-primary"
                         disabled={loading || seed == null}
                         onClick={submit}
                     >
@@ -979,7 +945,7 @@ function App() {
                     </button>
                     {inSession && result && (
                         <button
-                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                            className="forge-btn forge-btn-copper"
                             disabled={loading}
                             onClick={async () => {
                                 const nextIdx = questionIdx + 1
@@ -1010,59 +976,42 @@ function App() {
                 </div>
 
                 {result && (
-                    <div className="mt-3">
-                        <div className={`font-semibold ${result.correct ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <div className="forge-result">
+                        <div className={`forge-stamp ${result.correct ? '' : 'is-wrong'}`}>
                             {result.correct ? 'Correct' : 'Incorrect'}
                         </div>
                         {!result.correct && result.why_incorrect_selected && (
-                            <div className="mt-1 text-sm text-red-700">Why selected option is wrong: {result.why_incorrect_selected}</div>
+                            <div className="text-sm" style={{ color: 'var(--wrong)' }}>{result.why_incorrect_selected}</div>
                         )}
                         <button
-                            className="mt-2 text-sm text-indigo-700 hover:underline"
+                            className="forge-explain-toggle"
                             onClick={() => setExplanationOpen((v) => !v)}
                         >
                             {explanationOpen ? 'Hide explanation' : 'Show explanation'}
                         </button>
                         {explanationOpen && (
-                            <div className="mt-2">
-                                <div className="text-sm text-gray-700">Correct answer: {result.correct_answer}</div>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <div className="font-semibold">Explanation</div>
-                                    <div className="flex flex-wrap gap-1 text-xs">
-                                        {result.explanation?.concept && (
-                                            <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">Concept</span>
-                                        )}
-                                        {result.explanation?.plan && (
-                                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Plan</span>
-                                        )}
-                                        {result.explanation?.quick_check && (
-                                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">Quick check</span>
-                                        )}
-                                        {result.explanation?.common_mistake && (
-                                            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800">Common mistake</span>
-                                        )}
-                                    </div>
-                                    <button
-                                        className="ml-auto text-xs text-gray-700 hover:underline"
-                                        onClick={async () => {
-                                            const parts: string[] = []
-                                            if (result.explanation?.concept) parts.push(`Concept: ${result.explanation.concept}`)
-                                            if (result.explanation?.plan) parts.push(`Plan: ${result.explanation.plan}`)
-                                            result.explanation_steps.forEach((s, i) => parts.push(`${i + 1}. ${s}`))
-                                            if (result.explanation?.quick_check) parts.push(`Quick check: ${result.explanation.quick_check}`)
-                                            if (result.explanation?.common_mistake) parts.push(`Common mistake: ${result.explanation.common_mistake}`)
-                                            const text = parts.join('\n')
-                                            try {
-                                                await navigator.clipboard.writeText(text)
-                                            } catch {
-                                                // no-op
-                                            }
-                                        }}
-                                    >
-                                        Copy explanation
-                                    </button>
-                                </div>
-                                {/* Elaborate AI tutor */}
+                            <div className="forge-margin">
+                                <h3>Margin notes</h3>
+                                <div className="text-sm mb-2">Answer: {result.correct_answer}</div>
+                                <button
+                                    className="forge-btn forge-btn-ghost"
+                                    style={{ padding: '0.4rem 0.65rem', fontSize: '0.72rem', marginBottom: '0.6rem' }}
+                                    onClick={async () => {
+                                        const parts: string[] = []
+                                        if (result.explanation?.concept) parts.push(`Concept: ${result.explanation.concept}`)
+                                        if (result.explanation?.plan) parts.push(`Plan: ${result.explanation.plan}`)
+                                        result.explanation_steps.forEach((s, i) => parts.push(`${i + 1}. ${s}`))
+                                        if (result.explanation?.quick_check) parts.push(`Quick check: ${result.explanation.quick_check}`)
+                                        if (result.explanation?.common_mistake) parts.push(`Common mistake: ${result.explanation.common_mistake}`)
+                                        try {
+                                            await navigator.clipboard.writeText(parts.join('\n'))
+                                        } catch {
+                                            // no-op
+                                        }
+                                    }}
+                                >
+                                    Copy notes
+                                </button>
                                 <ElaborateTutor
                                     apiBase={apiBase}
                                     userId={userId}
@@ -1073,39 +1022,33 @@ function App() {
                                     steps={result.explanation_steps}
                                     correctAnswer={result.correct_answer}
                                 />
-                                {result.explanation && (
-                                    <div className="mb-2 text-sm space-y-1">
-                                        {result.explanation.concept && (
-                                            <div className="bg-purple-100 text-purple-900 px-2 py-1 rounded"><span className="font-semibold">Concept:</span> {renderInlineMath(result.explanation.concept)}</div>
-                                        )}
-                                        {result.explanation.plan && (
-                                            <div className="bg-green-100 text-green-900 px-2 py-1 rounded"><span className="font-semibold">Plan:</span> {renderInlineMath(result.explanation.plan)}</div>
-                                        )}
-                                    </div>
+                                {result.explanation?.concept && (
+                                    <p className="forge-note"><span className="forge-note-label">Concept</span>{renderInlineMath(result.explanation.concept)}</p>
+                                )}
+                                {result.explanation?.plan && (
+                                    <p className="forge-note"><span className="forge-note-label">Plan</span>{renderInlineMath(result.explanation.plan)}</p>
                                 )}
                                 <ol className="list-decimal list-inside space-y-1">
                                     {result.explanation_steps.map((s, i) => (
                                         <li key={i}>{renderInlineMath(s)}</li>
                                     ))}
                                 </ol>
-                                {result.explanation && (
-                                    <div className="mt-2 text-sm space-y-1">
-                                        {result.explanation.quick_check && (
-                                            <div className="bg-amber-100 text-amber-900 px-2 py-1 rounded"><span className="font-semibold">Quick check:</span> {renderInlineMath(result.explanation.quick_check)}</div>
-                                        )}
-                                        {result.explanation.common_mistake && (
-                                            <div className="bg-pink-100 text-red-900 px-2 py-1 rounded"><span className="font-semibold">Common mistake:</span> {renderInlineMath(result.explanation.common_mistake)}</div>
-                                        )}
-                                    </div>
+                                {result.explanation?.quick_check && (
+                                    <p className="forge-note"><span className="forge-note-label">Check</span>{renderInlineMath(result.explanation.quick_check)}</p>
+                                )}
+                                {result.explanation?.common_mistake && (
+                                    <p className="forge-note"><span className="forge-note-label">Common slip</span>{renderInlineMath(result.explanation.common_mistake)}</p>
                                 )}
                             </div>
                         )}
                     </div>
                 )}
+                    </section>
+                </div>
 
                 {!inSession && missed.length > 0 && (
-                    <div className="mt-6 p-4 border border-gray-200 rounded-md bg-white">
-                        <div className="font-semibold mb-2">Review missed questions</div>
+                    <div className="mt-6 p-4 forge-footer">
+                        <div className="font-semibold mb-2" style={{ fontFamily: 'var(--serif)' }}>Review missed questions</div>
                         <ul className="space-y-2">
                             {missed.map((m, idx) => (
                                 <li key={idx} className="flex items-center justify-between gap-3">
@@ -1113,7 +1056,7 @@ function App() {
                                         {m.domain} · {m.skill} · {m.difficulty}
                                     </div>
                                     <button
-                                        className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                                        className="forge-btn forge-btn-primary"
                                         onClick={async () => {
                                             setDomain(m.domain)
                                             setSkill(m.skill)
@@ -1131,7 +1074,7 @@ function App() {
                         </ul>
                         <div className="mt-3">
                             <button
-                                className="inline-flex items-center px-3 py-1.5 rounded bg-slate-700 text-white hover:bg-slate-800 text-sm"
+                                className="forge-btn forge-btn-ghost"
                                 onClick={() => setMissed([])}
                             >
                                 Clear review list
@@ -1141,16 +1084,16 @@ function App() {
                 )}
 
                 {sessionSummary && (
-                    <div className="mt-4 p-3 border border-emerald-200 rounded-md bg-emerald-50">
-                        <div className="text-base font-semibold text-emerald-800">
+                    <div className="mt-4 p-3 forge-footer">
+                        <div className="text-base font-semibold" style={{ fontFamily: 'var(--serif)', color: 'var(--ok)' }}>
                             Session complete: {sessionSummary.correct}/{sessionSummary.total} correct • Accuracy {Math.round((sessionSummary.correct / sessionSummary.total) * 100)}%
                         </div>
                     </div>
                 )}
 
                 {estimate && (
-                    <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white">
-                        <div className="font-bold">Estimated SAT Math score</div>
+                    <div className="mt-4 p-4 forge-footer">
+                        <div className="font-bold" style={{ fontFamily: 'var(--serif)' }}>Estimated SAT Math score</div>
                         <div className="text-2xl">
                             {estimate.score}{' '}
                             <span className="text-sm text-gray-600">(68% CI {estimate.ci68[0]}–{estimate.ci68[1]})</span>
@@ -1161,10 +1104,10 @@ function App() {
                     </div>
                 )}
 
-                <div className="mt-4 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
-                    <div className="flex flex-wrap gap-2 items-center">
+                <div className="forge-footer">
+                    <div className="forge-footer-row">
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                            className="forge-btn forge-btn-ghost"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1195,10 +1138,10 @@ function App() {
                                 }
                             }}
                         >
-                            📊 My Stats
+                            My Stats
                         </button>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                            className="forge-btn forge-btn-ghost"
                             disabled={streaksLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1226,10 +1169,10 @@ function App() {
                                 }
                             }}
                         >
-                            {streaksLoading ? 'Loading…' : '🔥 My Streaks'}
+                            {streaksLoading ? 'Loading…' : 'Streaks'}
                         </button>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                            className="forge-btn forge-btn-ghost"
                             disabled={achievementsLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1257,10 +1200,10 @@ function App() {
                                 }
                             }}
                         >
-                            {achievementsLoading ? 'Loading…' : '🏆 My Achievements'}
+                            {achievementsLoading ? 'Loading…' : 'Achievements'}
                         </button>
                         <button
-                            className="ml-auto inline-flex items-center px-3 py-2 rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:border-rose-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                            className="forge-btn forge-btn-danger ml-auto"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1284,13 +1227,13 @@ function App() {
                                 }
                             }}
                         >
-                            🗑️ Reset my stats
+                            Reset stats
                         </button>
                     </div>
                     {stats && statsOpen && (
-                        <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
+                        <div className="mt-4">
                             <div className="flex items-center justify-between mb-2">
-                                <div className="font-semibold">📊 My Stats</div>
+                                <div className="font-semibold">Stats</div>
                                 <button
                                     onClick={() => setStatsOpen(false)}
                                     className="text-xs text-gray-500 hover:text-gray-700"
@@ -1314,7 +1257,7 @@ function App() {
                                 <div className="mb-1 text-sm font-semibold text-gray-700">
                                     Overall by skill
                                 </div>
-                                <table className="w-full border-collapse">
+                                <table className="forge-table">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1351,7 +1294,7 @@ function App() {
                                 <div className="mb-1 text-sm font-semibold text-gray-700">
                                     By difficulty
                                 </div>
-                                <table className="w-full border-collapse">
+                                <table className="forge-table">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1389,7 +1332,7 @@ function App() {
                                 <div className="mt-5 mb-1 text-sm font-semibold text-gray-700">
                                     By source (AI vs Template)
                                 </div>
-                                <table className="w-full border-collapse">
+                                <table className="forge-table">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1427,7 +1370,7 @@ function App() {
                     {streaks && streaksOpen && (
                         <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
                             <div className="flex items-center justify-between mb-2">
-                                <div className="font-semibold">🔥 My Streak</div>
+                                <div className="font-semibold">Streak</div>
                                 <button
                                     onClick={() => setStreaksOpen(false)}
                                     className="text-xs text-gray-500 hover:text-gray-700"
@@ -1455,7 +1398,7 @@ function App() {
                     {achievements && achievementsOpen && (
                         <div className="mt-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
                             <div className="flex items-center justify-between mb-2">
-                                <div className="font-semibold">🏆 My Achievements</div>
+                                <div className="font-semibold">Achievements</div>
                                 <button
                                     onClick={() => setAchievementsOpen(false)}
                                     className="text-xs text-gray-500 hover:text-gray-700"
@@ -1490,11 +1433,11 @@ function App() {
 
                 {/* About Modal */}
                 {showAbout && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAbout(false)}>
-                        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="p-6">
+                    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(7, 21, 37, 0.72)' }} onClick={() => setShowAbout(false)}>
+                        <div className="forge-modal max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-2xl font-bold text-blue-600">How DSAT Math Forge Works</h3>
+                                    <h3 className="text-2xl font-bold" style={{ fontFamily: 'var(--serif)', color: 'var(--navy)' }}>How DSAT Math Forge Works</h3>
                                     <button
                                         onClick={() => setShowAbout(false)}
                                         className="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none"
@@ -1549,6 +1492,7 @@ function App() {
                         </div>
                     </div>
                 )}
+                <p className="forge-colophon">No login · 100% free · ink on navy paper</p>
             </div>
         </div>
     )
@@ -1616,7 +1560,8 @@ function ElaborateTutor(props: {
     return (
         <div className="mt-3">
             <button
-                className="inline-flex items-center px-2 py-1.5 rounded bg-sky-200 text-sky-900 hover:bg-sky-300 text-xs"
+                className="forge-btn forge-btn-ghost"
+                style={{ padding: '0.4rem 0.65rem', fontSize: '0.72rem' }}
                 onClick={() => setOpen((v) => !v)}
             >
                 {open ? 'Hide tutor' : 'Ask the tutor'}
@@ -1633,7 +1578,7 @@ function ElaborateTutor(props: {
                     />
                     <div className="mt-2 flex items-center gap-2">
                         <button
-                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
+                            className="forge-btn forge-btn-primary"
                             disabled={loading || !q.trim()}
                             onClick={submit}
                         >
