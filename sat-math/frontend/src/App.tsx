@@ -712,7 +712,7 @@ function App() {
                             ))}
                         </select>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                             disabled={loading || inSession}
                             onClick={() => {
                                 setEstimate(null)
@@ -753,7 +753,7 @@ function App() {
                             />
                         </label>
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            className="inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             disabled={loading || inSession}
                             onClick={async () => {
                                 setEstimate(null)
@@ -789,7 +789,7 @@ function App() {
                         <div className="text-sm text-gray-500 mb-2">
                             Skill: {skillOptions[domain].find(s => s.value === skill)?.label || skill} • Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
                         </div>
-                        <div className="question-card bg-white border-2 border-slate-200 rounded-xl shadow-md p-6 mb-3 whitespace-pre-wrap text-lg leading-relaxed">
+                        <div className="question-card bg-white border-2 border-slate-200 rounded-xl shadow-md p-6 mb-3 whitespace-pre-wrap text-center text-lg leading-relaxed">
                             {useAI
                                 ? (() => {
                                     const norm = normalizeLatex(latex)
@@ -971,7 +971,7 @@ function App() {
                         />
                     )}
                     <button
-                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         disabled={loading || seed == null}
                         onClick={submit}
                     >
@@ -979,7 +979,7 @@ function App() {
                     </button>
                     {inSession && result && (
                         <button
-                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                            className="inline-flex items-center px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                             disabled={loading}
                             onClick={async () => {
                                 const nextIdx = questionIdx + 1
@@ -1164,7 +1164,7 @@ function App() {
                 <div className="mt-4 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
                     <div className="flex flex-wrap gap-2 items-center">
                         <button
-                            className="inline-flex items-center px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1198,7 +1198,7 @@ function App() {
                             📊 My Stats
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                             disabled={streaksLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1229,7 +1229,7 @@ function App() {
                             {streaksLoading ? 'Loading…' : '🔥 My Streaks'}
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                            className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                             disabled={achievementsLoading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1260,7 +1260,7 @@ function App() {
                             {achievementsLoading ? 'Loading…' : '🏆 My Achievements'}
                         </button>
                         <button
-                            className="ml-2 inline-flex items-center px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                            className="ml-auto inline-flex items-center px-3 py-2 rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:border-rose-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                             disabled={loading || !userId}
                             onClick={async () => {
                                 if (!userId) return
@@ -1614,7 +1614,7 @@ function ElaborateTutor(props: {
                     />
                     <div className="mt-2 flex items-center gap-2">
                         <button
-                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
+                            className="inline-flex items-center px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 text-sm"
                             disabled={loading || !q.trim()}
                             onClick={submit}
                         >
