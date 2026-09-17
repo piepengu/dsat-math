@@ -1,4 +1,6 @@
-# Deploy static site from docs/ to GitHub Pages using official actions
+# Deploy the frontend build to GitHub Pages using the official actions.
+# Pages source is set to GitHub Actions (build_type=workflow), so the legacy
+# Jekyll builder no longer publishes the stale committed docs/ folder.
 
 name: pages
 
