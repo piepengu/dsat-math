@@ -296,6 +296,11 @@ def generate_item(req: GenerateRequest):
     )
 
 
+def _normalize_source(source: Optional[str]) -> str:
+    """Only 'ai' and 'template' are stored, so per-source stats stay groupable."""
+    return "ai" if (source or "").strip().lower() == "ai" else "template"
+
+
 @app.post("/grade", response_model=GradeResponse)
 def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
     item_meta = None
@@ -361,7 +366,7 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
             seed=req.seed,
             correct=bool(correct),
             correct_answer=str(sol),
-            source="template",
+            source=_normalize_source(req.source),
             time_ms=req.time_ms if hasattr(req, "time_ms") else None,
             difficulty=(req.difficulty if hasattr(req, "difficulty") else None),
             created_at=datetime.now(timezone.utc),
@@ -450,7 +455,7 @@ def grade_item(req: GradeRequest, db: Session = Depends(get_db)):
         seed=req.seed,
         correct=bool(correct),
         correct_answer=str(sol),
-        source="template",
+        source=_normalize_source(req.source),
         time_ms=req.time_ms if hasattr(req, "time_ms") else None,
         difficulty=(req.difficulty if hasattr(req, "difficulty") else None),
         created_at=datetime.now(timezone.utc),

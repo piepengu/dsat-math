@@ -1310,7 +1310,11 @@ function App() {
                                 </label>
                             </div>
                             {!showByDifficulty && (
-                                <table className="w-full mt-2 border-collapse">
+                                <>
+                                <div className="mb-1 text-sm font-semibold text-gray-700">
+                                    Overall by skill
+                                </div>
+                                <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1338,11 +1342,16 @@ function App() {
                                             })}
                                     </tbody>
                                 </table>
+                                </>
                             )}
 
                             {/* Per-difficulty breakdown if provided by backend */}
                             {showByDifficulty && Boolean((stats as any).__by_difficulty) && (
-                                <table className="w-full mt-4 border-collapse">
+                                <>
+                                <div className="mb-1 text-sm font-semibold text-gray-700">
+                                    By difficulty
+                                </div>
+                                <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1371,11 +1380,16 @@ function App() {
                                             )}
                                     </tbody>
                                 </table>
+                                </>
                             )}
 
                             {/* Per-source breakdown (AI vs template) */}
                             {Boolean((stats as any).__by_source) && (
-                                <table className="w-full mt-4 border-collapse">
+                                <>
+                                <div className="mt-5 mb-1 text-sm font-semibold text-gray-700">
+                                    By source (AI vs Template)
+                                </div>
+                                <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left p-2 text-gray-900">Skill</th>
@@ -1389,19 +1403,24 @@ function App() {
                                     <tbody>
                                         {Object.entries((stats as any).__by_source as Record<string, Record<string, any>>)
                                             .flatMap(([sk, srcMap]) =>
-                                                Object.entries(srcMap).map(([src, v]) => (
-                                                    <tr key={`${sk}-${src}`} className="border-b last:border-0">
-                                                        <td className="p-2">{sk}</td>
-                                                        <td className="p-2 capitalize">{src}</td>
-                                                        <td className="text-right p-2">{(v as any).attempts}</td>
-                                                        <td className="text-right p-2">{(v as any).correct}</td>
-                                                        <td className="text-right p-2">{Math.round(((v as any).accuracy || 0) * 100)}%</td>
-                                                        <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
-                                                    </tr>
-                                                ))
+                                                Object.entries(srcMap).map(([src, v]) => {
+                                                    const accuracyPercent = Math.round(((v as any).accuracy || 0) * 100)
+                                                    const accuracyColor = accuracyPercent >= 80 ? 'text-green-700 font-semibold' : accuracyPercent >= 50 ? 'text-yellow-700' : 'text-red-700'
+                                                    return (
+                                                        <tr key={`${sk}-${src}`} className="border-b last:border-0 hover:bg-gray-50">
+                                                            <td className="p-2 font-medium">{skillDisplayNames[sk as Skill] || sk}</td>
+                                                            <td className="p-2">{src.toLowerCase() === 'ai' ? 'AI' : 'Template'}</td>
+                                                            <td className="text-right p-2">{(v as any).attempts}</td>
+                                                            <td className="text-right p-2">{(v as any).correct}</td>
+                                                            <td className={`text-right p-2 ${accuracyColor}`}>{accuracyPercent}%</td>
+                                                            <td className="text-right p-2">{(v as any).avg_time_s ? `${((v as any).avg_time_s as number).toFixed(1)}s` : '-'}</td>
+                                                        </tr>
+                                                    )
+                                                })
                                             )}
                                     </tbody>
                                 </table>
+                                </>
                             )}
                         </div>
                     )}
