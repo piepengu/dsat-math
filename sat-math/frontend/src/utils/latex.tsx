@@ -61,9 +61,13 @@ export const renderInlineMath = (text: string) => {
         t = t.replace(/\bwhatare\b/gi, (m) => m[0] === 'W' ? 'What are' : 'what are')
         // Keep currency tight to numbers: "$ 15.00" -> "$15.00"
         t = t.replace(/\$\s+(\d)/g, '$$$1')
-        // Normalize excess whitespace
+        // Normalize excess whitespace, but keep a single boundary space so text
+        // does not glue onto adjacent inline math (e.g. "Solve for" + $x$).
+        const hadLeading = /^\s/.test(t)
+        const hadTrailing = /\s$/.test(t)
         t = t.replace(/\s+/g, ' ').trim()
-        return t
+        if (t === '') return ''
+        return `${hadLeading ? ' ' : ''}${t}${hadTrailing ? ' ' : ''}`
     }
     const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
     // Post-process to remove duplicate variables that appear both in LaTeX and plain text
@@ -96,10 +100,9 @@ export const renderInlineMath = (text: string) => {
             // Use a more explicit pattern that handles punctuation directly
             const varPattern = new RegExp(`^\\s*${curr.var}(?=\\s|[?.,!;:]|$)`, 'i')
             if (varPattern.test(next.content)) {
-                // Remove the variable and any trailing space, but keep punctuation
-                next.content = next.content.replace(varPattern, '')
-                // Clean up any double spaces that might result
-                next.content = next.content.replace(/\s+/g, ' ').trim()
+                // Remove the duplicated variable but keep the spacing that
+                // separates the remaining text from the preceding math.
+                next.content = next.content.replace(varPattern, '').replace(/\s+/g, ' ')
             }
         }
     }
