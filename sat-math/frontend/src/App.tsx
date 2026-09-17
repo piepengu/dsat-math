@@ -919,13 +919,13 @@ function App() {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {choices && choices.length > 0 ? (
-                        <div className="flex flex-col gap-2 w-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                             {(() => {
                                 const resolvedCorrectIdx = useAI && aiCorrectIndex != null
                                     ? aiCorrectIndex
                                     : (result && choices ? choices.findIndex((cc) => cc === result.correct_answer) : -1)
                                 return choices.map((c, idx) => {
-                                    let base = 'flex items-center gap-3 p-3 border rounded hover:bg-gray-50 '
+                                    let base = 'flex items-center gap-2 px-3 py-2 border rounded cursor-pointer hover:bg-gray-50 '
                                     if (result) {
                                         if (idx === resolvedCorrectIdx) base += 'border-emerald-600 bg-emerald-50 '
                                         else if (selectedIdx === idx && !result.correct) base += 'border-red-600 bg-red-50 '
@@ -945,10 +945,10 @@ function App() {
                                             />
                                             <span className="flex items-center gap-2">{renderInlineMath(c)}</span>
                                             {result && idx === resolvedCorrectIdx && (
-                                                <span className="ml-2 text-xs text-emerald-700">(Correct)</span>
+                                                <span className="ml-auto text-xs text-emerald-700">Correct</span>
                                             )}
                                             {result && selectedIdx === idx && !result.correct && (
-                                                <span className="ml-2 text-xs text-red-700">(Your choice)</span>
+                                                <span className="ml-auto text-xs text-red-700">Your choice</span>
                                             )}
                                         </label>
                                     )
