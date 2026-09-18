@@ -1,5 +1,148 @@
 import { InlineMath } from 'react-katex'
 
+const consumeBraceGroup = (s: string, i: number): number => {
+    if (s[i] !== '{') return i
+    let depth = 0
+    for (let j = i; j < s.length; j++) {
+        if (s[j] === '{') depth++
+        else if (s[j] === '}') {
+            depth--
+            if (depth === 0) return j + 1
+        }
+    }
+    return s.length
+}
+
+const isSingleLetterVar = (s: string, i: number, from: number): boolean => {
+    if (!/[A-Za-z]/.test(s[i])) return false
+    const prev = i > from ? s[i - 1] : ' '
+    const next = i + 1 < s.length ? s[i + 1] : ' '
+    return !/[A-Za-z]/.test(prev) && !/[A-Za-z]/.test(next)
+}
+
+const skipSpaces = (s: string, i: number, dir: 1 | -1, limit: number): number => {
+    let j = i
+    if (dir === 1) {
+        while (j < limit && s[j] === ' ') j++
+    } else {
+        while (j > limit && s[j] === ' ') j--
+    }
+    return j
+}
+
+const consumeAtom = (s: string, start: number): number => {
+    let i = skipSpaces(s, start, 1, s.length)
+    if (i >= s.length) return start
+    if (s[i] === '\\' && /[a-zA-Z]/.test(s[i + 1] || '')) {
+        const cmdStart = i
+        i++
+        while (i < s.length && /[a-zA-Z]/.test(s[i])) i++
+        const cmd = s.slice(cmdStart, i)
+        if (cmd === '\\begin' || cmd === '\\end') return start
+        while (s[i] === '*') i++
+        i = skipSpaces(s, i, 1, s.length)
+        while (i < s.length && s[i] === '{') {
+            i = consumeBraceGroup(s, i)
+            i = skipSpaces(s, i, 1, s.length)
+        }
+        while (i < s.length && (s[i] === '_' || s[i] === '^')) {
+            i++
+            if (s[i] === '{') i = consumeBraceGroup(s, i)
+            else if (s[i] === '\\') {
+                const next = consumeAtom(s, i)
+                if (next === i) i++
+                else i = next
+            } else if (i < s.length) i++
+        }
+        return i
+    }
+    if (/[0-9.]/.test(s[i])) {
+        while (i < s.length && /[0-9.]/.test(s[i])) i++
+        return i
+    }
+    if (isSingleLetterVar(s, i, 0)) return i + 1
+    if (s[i] === '(' || s[i] === ')') return i + 1
+    return start
+}
+
+const consumeMathExpr = (s: string, start: number): number => {
+    let i = consumeAtom(s, start)
+    if (i === start) return start
+    while (i < s.length) {
+        const saved = i
+        let j = skipSpaces(s, i, 1, s.length)
+        if (j < s.length && '=+-*/'.includes(s[j])) j++
+        const next = consumeAtom(s, j)
+        if (next === j) {
+            i = saved
+            break
+        }
+        i = next
+    }
+    return i
+}
+
+const expandLeft = (s: string, from: number, cmdAt: number): number => {
+    let start = cmdAt
+    while (start > from) {
+        let k = skipSpaces(s, start - 1, -1, from)
+        if (k < from) break
+        if ('=+-*/'.includes(s[k])) {
+            start = k
+            continue
+        }
+        if (/[0-9.]/.test(s[k])) {
+            while (k > from && /[0-9.]/.test(s[k - 1])) k--
+            start = k
+            continue
+        }
+        if (isSingleLetterVar(s, k, from)) {
+            start = k
+            continue
+        }
+        if (s[k] === '(' || s[k] === ')') {
+            start = k
+            continue
+        }
+        break
+    }
+    return start
+}
+
+/** Wrap undelimited TeX commands so KaTeX can render mixed prose + math. */
+export const wrapBareLatex = (input: string): string => {
+    const s = String(input)
+    if (!/\\[a-zA-Z]/.test(s)) return s
+    const held: string[] = []
+    const protectedText = s.replace(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g, (m) => {
+        held.push(m)
+        return `@@MATH${held.length - 1}@@`
+    })
+    if (!/\\[a-zA-Z]/.test(protectedText)) return s
+
+    let out = ''
+    let i = 0
+    while (i < protectedText.length) {
+        const rest = protectedText.slice(i)
+        const rel = rest.search(/\\[a-zA-Z]/)
+        if (rel === -1) {
+            out += rest
+            break
+        }
+        const cmdAt = i + rel
+        const start = expandLeft(protectedText, i, cmdAt)
+        const end = consumeMathExpr(protectedText, start)
+        if (end <= cmdAt) {
+            out += protectedText.slice(i, cmdAt + 1)
+            i = cmdAt + 1
+            continue
+        }
+        out += protectedText.slice(i, start) + '$' + protectedText.slice(start, end).replace(/\s+/g, ' ').trim() + '$'
+        i = end
+    }
+    return out.replace(/@@MATH(\d+)@@/g, (_, n) => held[Number(n)])
+}
+
 // Shared inline LaTeX renderer used across the app.
 // Supports $...$, \(...\), and treats \[...\] inline when encountered in text.
 // Includes fixes for common malformed fractions and exponent groups.
@@ -69,7 +212,7 @@ export const renderInlineMath = (text: string) => {
         if (t === '') return ''
         return `${hadLeading ? ' ' : ''}${t}${hadTrailing ? ' ' : ''}`
     }
-    const parts = String(text).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
+    const parts = wrapBareLatex(String(text)).split(/(\$[^$]+\$|\\\([^)]*\\\)|\\\[[\s\S]*?\\\])/g)
     // Post-process to remove duplicate variables that appear both in LaTeX and plain text
     const processedParts: Array<{ type: 'latex' | 'text'; content: string; var?: string }> = []
     for (let i = 0; i < parts.length; i++) {
