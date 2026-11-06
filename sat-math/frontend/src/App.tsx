@@ -124,6 +124,7 @@ function App() {
     const [startTs, setStartTs] = useState<number | null>(null)
     const [nowTs, setNowTs] = useState<number>(Date.now())
     const [aiGenStartTs, setAiGenStartTs] = useState<number | null>(null) // Track AI generation start time
+    const [wakeStartTs, setWakeStartTs] = useState<number | null>(null)
     const [labelsOn, setLabelsOn] = useState<boolean>(true)
     const [showByDifficulty, setShowByDifficulty] = useState<boolean>(false)
     const [missed, setMissed] = useState<Array<{ domain: Domain; skill: Skill; difficulty: 'easy' | 'medium' | 'hard' }>>([])
@@ -399,7 +400,7 @@ function App() {
         setUserId(uid)
     }, [])
 
-    const loadQuestion = async () => {
+    const loadQuestion = async (opts?: { persistLoading?: boolean }): Promise<boolean> => {
         setLoading(true)
         setLoadPhase('generating')
         setResult(null)
@@ -410,6 +411,7 @@ function App() {
         setAiCorrectIndex(null)
         setAiExplanation(null)
         setElapsedMs(null)
+        let ok = false
         try {
             // If adaptive mode is on, fetch next suggested difficulty
             if (adaptive) {
@@ -431,7 +433,7 @@ function App() {
                     domain,
                     skill,
                     difficulty,
-                })
+                }, { timeout: 90000 })
                 setAiGenStartTs(null) // Clear when done
                 setLatex(resp.data.prompt_latex)
                 setSeed(-1) // AI items are not seeded
@@ -447,7 +449,7 @@ function App() {
                 const resp = await axios.post<GenerateResponse>(`${apiBase}/generate`, {
                     domain,
                     skill,
-                })
+                }, { timeout: 90000 })
                 setLatex(resp.data.prompt_latex)
                 setSeed(resp.data.seed)
                 setChoices(resp.data.choices ?? null)
@@ -458,14 +460,18 @@ function App() {
             }
             setStartTs(Date.now())
             setNowTs(Date.now())
+            ok = true
         } catch (e: any) {
             const msg = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))
             setLastError(msg)
             setAiGenStartTs(null) // Clear on error
         } finally {
-            setLoading(false)
-            setLoadPhase('idle')
+            if (ok || !opts?.persistLoading) {
+                setLoading(false)
+                setLoadPhase('idle')
+            }
         }
+        return ok
     }
 
     // Auto-focus answer input when new question loads
@@ -490,6 +496,12 @@ function App() {
         const id = setInterval(() => setNowTs(Date.now()), 500)
         return () => clearInterval(id)
     }, [aiGenStartTs])
+
+    useEffect(() => {
+        if (!(loading && !latex)) return
+        const id = setInterval(() => setNowTs(Date.now()), 250)
+        return () => clearInterval(id)
+    }, [loading, latex])
 
     const submit = async () => {
         if (seed == null) return
@@ -578,18 +590,34 @@ function App() {
     }
 
     useEffect(() => {
-        // Warm the free-tier API, then load the first question
+        // Warm the free-tier API (started in index.html), then load the first question
         let cancelled = false
+        const started = Date.now()
+        setWakeStartTs(started)
+        setNowTs(started)
+        setLoading(true)
+        setLoadPhase('waking')
         ;(async () => {
-            setLoading(true)
-            setLoadPhase('waking')
+            const early = typeof window !== 'undefined'
+                ? (window as unknown as { __dsatWake?: Promise<unknown> }).__dsatWake
+                : undefined
             try {
-                await axios.get(`${apiBase}/health`, { timeout: 90000 })
+                if (early) await early
+                else await axios.get(`${apiBase}/health`, { timeout: 90000 })
             } catch {
                 // Still attempt generate; cold start may recover
             }
-            if (!cancelled) {
-                await loadQuestion()
+            if (cancelled) return
+            const delays = [0, 2000, 4000, 8000]
+            for (let i = 0; i < delays.length; i++) {
+                if (delays[i]) {
+                    setLoadPhase('waking')
+                    await new Promise((r) => setTimeout(r, delays[i]))
+                }
+                if (cancelled) return
+                const last = i === delays.length - 1
+                const ok = await loadQuestion({ persistLoading: !last })
+                if (ok) return
             }
         })()
         return () => {
@@ -598,8 +626,17 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    useEffect(() => {
+        if (!apiBase) return
+        const id = window.setInterval(() => {
+            axios.get(`${apiBase}/health`, { timeout: 8000 }).catch(() => undefined)
+        }, 10 * 60 * 1000)
+        return () => window.clearInterval(id)
+    }, [apiBase])
+
+    const wakeSec = wakeStartTs ? Math.max(0, Math.round((nowTs - wakeStartTs) / 1000)) : 0
     const loadingLabel = (() => {
-        if (loadPhase === 'waking') return 'Waking server…'
+        if (loadPhase === 'waking') return wakeSec > 0 ? `Waking server… ${wakeSec}s` : 'Waking server…'
         if (loadPhase === 'grading') return 'Checking…'
         if (loadPhase === 'generating' && useAI) {
             const secs = aiGenStartTs ? Math.max(0, Math.round((Date.now() - aiGenStartTs) / 1000)) : 0
@@ -673,9 +710,14 @@ function App() {
                     <div className="forge-banner">
                         <div className="font-medium">{loadingLabel}</div>
                         {loadPhase === 'waking' && (
-                            <p className="mt-1 text-sm opacity-80">
-                                Free hosting may take up to ~45s to wake. The booklet opens right after.
-                            </p>
+                            <>
+                                <p className="mt-1 text-sm opacity-80">
+                                    The free API sleeps when idle, then takes up to about 45s to start. The first question loads as soon as it is awake.
+                                </p>
+                                <div className="forge-wake-bar" aria-hidden>
+                                    <span style={{ width: `${Math.min(100, (wakeSec / 45) * 100)}%` }} />
+                                </div>
+                            </>
                         )}
                     </div>
                 )}
